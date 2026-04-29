@@ -4,9 +4,9 @@ import type { FolderDocument } from '../types'
 const props = defineProps<{ doc: FolderDocument }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const isImage = props.doc.mimeType.startsWith('image/')
-const isPdf = props.doc.mimeType === 'application/pdf'
-const isText = props.doc.mimeType.startsWith('text/')
+const isImage = props.doc.mime_type.startsWith('image/')
+const isPdf = props.doc.mime_type === 'application/pdf'
+const isText = props.doc.mime_type.startsWith('text/')
 
 // Decode text content for plain-text previews
 function decodeText(dataUrl: string): string {
