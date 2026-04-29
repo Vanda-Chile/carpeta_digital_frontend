@@ -10,5 +10,5 @@ export interface FolderDocument {
     uploaded_by: string | null
     uploaded_at: string // ISO 8601
     signed_at: string | null // ISO 8601
-    data_url: string // for previewing the document without an extra API call
+    data_url?: string // populated when a preview is available
 }

@@ -66,7 +66,7 @@ function decodeText(data_url: string): string {
         <pre
           v-else-if="isText"
           class="text-xs text-gray-700 bg-gray-50 rounded-lg p-4 overflow-auto whitespace-pre-wrap"
-        >{{ decodeText(doc.data_url) }}</pre>
+        >{{ decodeText(doc.data_url ?? '') }}</pre>
 
         <!-- Unsupported type -->
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
