@@ -9,9 +9,9 @@ const isPdf = props.doc.mime_type === 'application/pdf'
 const isText = props.doc.mime_type.startsWith('text/')
 
 // Decode text content for plain-text previews
-function decodeText(dataUrl: string): string {
+function decodeText(data_url: string): string {
   try {
-    const base64 = dataUrl.split(',')[1]
+    const base64 = data_url.split(',')[1]
     return atob(base64)
   } catch {
     return 'No se pudo decodificar el contenido.'
@@ -48,7 +48,7 @@ function decodeText(dataUrl: string): string {
         <!-- Image -->
         <img
           v-if="isImage"
-          :src="doc.dataUrl"
+          :src="doc.data_url"
           :alt="doc.tipo ?? ''"
           class="max-w-full mx-auto rounded-lg"
         />
@@ -56,7 +56,7 @@ function decodeText(dataUrl: string): string {
         <!-- PDF -->
         <iframe
           v-else-if="isPdf"
-          :src="doc.dataUrl"
+          :src="doc.data_url"
           :title="doc.tipo ?? ''"
           class="w-full rounded-lg"
           style="height: 60vh; border: none;"
@@ -66,14 +66,14 @@ function decodeText(dataUrl: string): string {
         <pre
           v-else-if="isText"
           class="text-xs text-gray-700 bg-gray-50 rounded-lg p-4 overflow-auto whitespace-pre-wrap"
-        >{{ decodeText(doc.dataUrl) }}</pre>
+        >{{ decodeText(doc.data_url) }}</pre>
 
         <!-- Unsupported type -->
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
           <span class="text-5xl mb-4">📎</span>
           <p class="text-sm text-gray-500">Vista previa no disponible para este tipo de archivo.</p>
           <a
-            :href="doc.dataUrl"
+            :href="doc.data_url"
             :download="(doc.tipo ?? 'documento') + '.pdf'"
             class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                    hover:bg-indigo-700 transition"
