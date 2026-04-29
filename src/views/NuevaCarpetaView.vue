@@ -25,6 +25,41 @@ const selectedClient = ref<ApiClient | null>(null)
 // Manual mode
 const manualRut = ref('')
 const manualRazonSocial = ref('')
+const rutError = ref('')
+
+// ── Chilean RUT validation ────────────────────────────────────────────────────
+function formatRut(raw: string): string {
+  // Keep only digits and k/K, strip everything else
+  const clean = raw.replace(/[^\dkK]/g, '').toUpperCase()
+  if (clean.length < 2) return clean
+  const body = clean.slice(0, -1)
+  const dv = clean.slice(-1)
+  return body.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv
+}
+
+function validateRut(rut: string): boolean {
+  const clean = rut.replace(/[^\dkK]/g, '').toUpperCase()
+  if (clean.length < 2) return false
+  const body = clean.slice(0, -1)
+  const dv = clean.slice(-1)
+  let sum = 0
+  let multiplier = 2
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += parseInt(body[i]) * multiplier
+    multiplier = multiplier === 7 ? 2 : multiplier + 1
+  }
+  const remainder = 11 - (sum % 11)
+  const expected = remainder === 11 ? '0' : remainder === 10 ? 'K' : String(remainder)
+  return dv === expected
+}
+
+function onRutInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value
+  manualRut.value = formatRut(raw)
+  rutError.value = manualRut.value && !validateRut(manualRut.value)
+    ? 'RUT inválido'
+    : ''
+}
 
 // ── Form state ────────────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -62,6 +97,7 @@ function switchMode(mode: 'search' | 'manual') {
   searchResults.value = []
   manualRut.value = ''
   manualRazonSocial.value = ''
+  rutError.value = ''
   error.value = ''
 }
 
@@ -69,7 +105,7 @@ function switchMode(mode: 'search' | 'manual') {
 const canSubmit = computed(() => {
   if (!trimmedDespacho.value) return false
   if (clientMode.value === 'search') return selectedClient.value !== null
-  return manualRut.value.trim() !== '' && manualRazonSocial.value.trim() !== ''
+  return manualRut.value.trim() !== '' && manualRazonSocial.value.trim() !== '' && validateRut(manualRut.value)
 })
 
 async function submit() {
@@ -236,13 +272,17 @@ async function submit() {
                 <label class="block text-xs text-gray-500 mb-1" for="manual-rut">Rut</label>
                 <input
                   id="manual-rut"
-                  v-model="manualRut"
+                  :value="manualRut"
                   type="text"
-                  placeholder="ej. 12345678-9"
-                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+                  placeholder="ej. 12.345.678-9"
+                  class="w-full rounded-lg border px-3 py-2 text-sm
                          placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
                          focus:border-indigo-500 transition"
+                  :class="rutError ? 'border-red-400' : 'border-gray-300'"
+                  @input="onRutInput"
                 />
+                <p v-if="rutError" class="mt-1 text-xs text-red-500">{{ rutError }}</p>
+              </div>
               </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1" for="manual-rs">Razón Social</label>
