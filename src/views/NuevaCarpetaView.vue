@@ -283,7 +283,6 @@ async function submit() {
                 />
                 <p v-if="rutError" class="mt-1 text-xs text-red-500">{{ rutError }}</p>
               </div>
-              </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1" for="manual-rs">Razón Social</label>
                 <input
