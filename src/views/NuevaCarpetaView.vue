@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
-import { api, type ApiClient } from '../api'
+import { api, type ApiClient, type ApiAgent } from '../api'
 
 const router = useRouter()
+
+// ── Agents state ──────────────────────────────────────────────────────────────
+const agents = ref<ApiAgent[]>([])
+const selectedAgentId = ref('')
+
+onMounted(async () => {
+  try {
+    agents.value = await api.agents.list()
+  } catch {
+    agents.value = []
+  }
+})
 
 // ── Dispatch number ───────────────────────────────────────────────────────────
 const despachoInput = ref('')
@@ -29,7 +41,6 @@ const rutError = ref('')
 
 // ── Chilean RUT validation ────────────────────────────────────────────────────
 function formatRut(raw: string): string {
-  // Keep only digits and k/K, strip everything else
   const clean = raw.replace(/[^\dkK]/g, '').toUpperCase()
   if (clean.length < 2) return clean
   const body = clean.slice(0, -1)
@@ -115,12 +126,18 @@ async function submit() {
   try {
     const payload =
       clientMode.value === 'search'
-        ? { numero_despacho: trimmedDespacho.value, operacion: operacion.value, client_rut: selectedClient.value!.rut }
+        ? {
+            numero_despacho: trimmedDespacho.value,
+            operacion: operacion.value,
+            client_rut: selectedClient.value!.rut,
+            agent_id: selectedAgentId.value || undefined,
+          }
         : {
             numero_despacho: trimmedDespacho.value,
             operacion: operacion.value,
             client_rut: manualRut.value.trim(),
             client_razon_social: manualRazonSocial.value.trim(),
+            agent_id: selectedAgentId.value || undefined,
           }
     const folder = await api.folders.create(payload)
     router.push(`/folder/${encodeURIComponent(folder.id)}`)
@@ -175,6 +192,24 @@ async function submit() {
             >
               <option value="importacion">Importación</option>
               <option value="exportacion">Exportación</option>
+            </select>
+          </div>
+
+          <!-- Agente Aduanero -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="agent">
+              Agente Aduanero
+            </label>
+            <select
+              id="agent"
+              v-model="selectedAgentId"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+            >
+              <option value="">-- Sin agente asignado --</option>
+              <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                {{ agent.name }} {{ agent.code ? `(${agent.code})` : '' }}
+              </option>
             </select>
           </div>
 

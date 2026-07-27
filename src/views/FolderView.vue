@@ -6,7 +6,11 @@ import AppHeader from '../components/AppHeader.vue'
 import UploadModal from '../components/UploadModal.vue'
 import SignModal from '../components/SignModal.vue'
 import BitacoraModal from '../components/BitacoraModal.vue'
-import { api, type ApiFolder } from '../api'
+import ClassifyModal from '../components/ClassifyModal.vue'
+import FolderDetailModal from '../components/FolderDetailModal.vue'
+import SendMailModal from '../components/SendMailModal.vue'
+import SendAduanaModal from '../components/SendAduanaModal.vue'
+import { api, type ApiFolder, type ApiDocument } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +23,11 @@ const pendingCount = computed(() => documents.value.filter(d => d.state === 'pen
 const showUpload = ref(false)
 const showSign = ref(false)
 const showBitacora = ref(false)
+const showClassify = ref(false)
+const showDetail = ref(false)
+const showSendMail = ref(false)
+const showSendAduana = ref(false)
+const selectedDocForClassify = ref<ApiDocument | null>(null)
 const signing = ref(false)
 const downloading = ref(false)
 const downloadingFirma = ref(false)
@@ -39,6 +48,15 @@ async function handleDelete(docId: string) {
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : 'No se pudo eliminar el documento.')
   }
+}
+
+function openClassify(doc: ApiDocument) {
+  selectedDocForClassify.value = doc
+  showClassify.value = true
+}
+
+function onDocumentClassified() {
+  store.fetchDocuments(folderId.value)
 }
 
 async function handleSign() {
@@ -125,18 +143,58 @@ function formatDateTime(iso: string): string {
     />
 
     <!-- Closure date banner -->
-    <div v-if="folder" class="max-w-5xl mx-auto px-4 pt-4 flex items-center gap-3">
+    <div v-if="folder" class="max-w-7xl mx-auto px-4 pt-4 flex flex-wrap items-center gap-3">
       <span
         :class="folder.operacion === 'exportacion' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'"
         class="rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
       >{{ folder.operacion === 'exportacion' ? 'Exportación' : 'Importación' }}</span>
+      <span v-if="folder.numero_aceptacion" class="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium">
+        N° Aceptación: {{ folder.numero_aceptacion }}
+      </span>
+      <p v-if="folder.fecha_aceptacion" class="text-xs text-gray-500">
+        Aceptación el <time :datetime="folder.fecha_aceptacion" class="font-medium text-gray-700">{{ formatDate(folder.fecha_aceptacion) }}</time>
+      </p>
       <p v-if="folder.closed_at" class="text-xs text-gray-500">
         Cerrada el <time :datetime="folder.closed_at" class="font-medium text-gray-700">{{ formatDateTime(folder.closed_at) }}</time>
       </p>
     </div>
 
     <!-- Action bar -->
-    <div class="max-w-5xl mx-auto px-4 pt-4 flex items-center justify-end gap-2">
+    <div class="max-w-7xl mx-auto px-4 pt-4 flex items-center justify-end gap-2">
+      <!-- Enviar a Aduana -->
+      <button
+        class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700
+               hover:bg-blue-100 transition flex items-center gap-1.5 cursor-pointer"
+        @click="showSendAduana = true"
+      >
+        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.5M4.5 21V10.5" />
+        </svg>
+        Enviar a Aduana
+      </button>
+      <!-- Enviar por mail -->
+      <button
+        class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700
+               hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
+        @click="showSendMail = true"
+      >
+        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5H4.5a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+        Enviar por Mail
+      </button>
+      <!-- Ver Detalle -->
+      <button
+        v-if="folder"
+        class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700
+               hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
+        @click="showDetail = true"
+      >
+        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+        Ver Detalle
+      </button>
       <!-- Bitácora -->
       <button
         class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700
@@ -173,7 +231,7 @@ function formatDateTime(iso: string): string {
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
-        {{ downloading ? 'Descargando…' : 'Descargar Archivos' }}
+        {{ downloading ? 'Descargando…' : 'Descargar' }}
       </button>
       <!-- Download signed XMLs — shown only when folder is already signed/closed -->
       <button
@@ -212,7 +270,7 @@ function formatDateTime(iso: string): string {
     </div>
 
     <!-- Content -->
-    <main class="max-w-5xl mx-auto px-4 py-4">
+    <main class="max-w-7xl mx-auto px-4 py-4">
       <!-- Loading -->
       <template v-if="store.loading">
         <div class="flex justify-center py-24">
@@ -303,9 +361,17 @@ function formatDateTime(iso: string): string {
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ doc.uploaded_by ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ formatDate(doc.uploaded_at) }}</td>
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ doc.signed_at ? formatDateTime(doc.signed_at) : '—' }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
+                <td class="px-4 py-3 whitespace-nowrap space-x-2">
                   <button
-                    class="text-xs font-medium text-red-500 hover:text-red-700 transition"
+                    v-if="!isClosed && doc.state !== 'deleted'"
+                    class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                    @click="openClassify(doc)"
+                  >
+                    Clasificar
+                  </button>
+                  <button
+                    v-if="!isClosed && doc.state !== 'deleted'"
+                    class="text-xs font-medium text-red-500 hover:text-red-700 transition cursor-pointer"
                     @click="handleDelete(doc.id)"
                   >
                     Eliminar
@@ -319,6 +385,18 @@ function formatDateTime(iso: string): string {
     </main>
 
     <!-- Modals -->
+    <FolderDetailModal
+      v-if="showDetail && folder"
+      :folder="folder"
+      @close="showDetail = false"
+    />
+    <ClassifyModal
+      v-if="showClassify && selectedDocForClassify"
+      :folder-id="folderId"
+      :document="selectedDocForClassify"
+      @close="showClassify = false"
+      @updated="onDocumentClassified"
+    />
     <UploadModal
       v-if="showUpload"
       :folder-id="folderId"
@@ -335,6 +413,18 @@ function formatDateTime(iso: string): string {
       v-if="showBitacora"
       :folder-id="folderId"
       @close="showBitacora = false"
+    />
+    <SendMailModal
+      v-if="showSendMail"
+      :folder-id="folderId"
+      :folder-name="folder?.numero_despacho"
+      @close="showSendMail = false"
+    />
+    <SendAduanaModal
+      v-if="showSendAduana"
+      :folder-id="folderId"
+      :despacho="folder?.numero_despacho"
+      @close="showSendAduana = false"
     />
   </div>
 </template>

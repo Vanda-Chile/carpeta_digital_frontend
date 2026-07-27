@@ -21,17 +21,26 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const menuOpen = ref(false)
+const adminMenuOpen = ref(false)
 
 function closeMenu() {
+  //console.log(auth.userInfo)
   menuOpen.value = false
+}
+
+function closeAdminMenu() {
+  adminMenuOpen.value = false
 }
 
 function goTo(path: string) {
   closeMenu()
+  closeAdminMenu()
   router.push(path)
 }
 
 function logout() {
+  closeMenu()
+  closeAdminMenu()
   auth.logout()
   router.push('/login')
 }
@@ -46,10 +55,16 @@ function logout() {
       aria-hidden="true"
       @click="closeMenu"
     />
+    <div
+      v-if="adminMenuOpen"
+      class="fixed inset-0 z-40"
+      aria-hidden="true"
+      @click="closeAdminMenu"
+    />
   </Teleport>
 
   <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+    <div class="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
 
       <!-- Back button -->
       <button
@@ -100,7 +115,7 @@ function logout() {
                  hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
           :aria-expanded="menuOpen"
           aria-haspopup="true"
-          @click="menuOpen = !menuOpen"
+          @click="menuOpen = !menuOpen; closeAdminMenu()"
         >
           Carpetas
           <svg class="w-4 h-4 text-gray-400 transition-transform"
@@ -141,7 +156,20 @@ function logout() {
               Buscar Carpeta
             </button>
 
-            <div class="my-1 border-t border-gray-100" />
+            <!-- Buscar Revisiones -->
+            <button
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700
+                     hover:bg-gray-50 transition text-left"
+              role="menuitem"
+              @click="goTo('/buscar-revisiones')"
+            >
+              <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor"
+                stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Buscar Revisiones
+            </button>
 
             <!-- Crear Carpeta -->
             <button
@@ -159,7 +187,7 @@ function logout() {
               Crear Carpeta
             </button>
 
-            <!-- Subir Archivo -->
+            <!-- Subir Archivo 
             <button
               class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700
                      hover:bg-gray-50 transition text-left"
@@ -173,26 +201,70 @@ function logout() {
                      0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
               Subir Archivo
-            </button>
+            </button>-->
+          </div>
+        </transition>
+      </div>
+      <!-- ── Admin dropdown ── -->
+      <div class="relative z-50">
+        <button
+          class="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700
+                 hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          :aria-expanded="adminMenuOpen"
+          aria-haspopup="true"
+          @click="adminMenuOpen = !adminMenuOpen; closeMenu()"
+        >
+          Administracion
+          <svg class="w-4 h-4 text-gray-400 transition-transform"
+            :class="adminMenuOpen ? 'rotate-180' : ''"
+            fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
-            <!-- Admin: Tipos de Documento -->
-            <template v-if="auth.username === 'admin'">
-              <div class="my-1 border-t border-gray-100" />
-              <button
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700
-                       hover:bg-gray-50 transition text-left"
-                role="menuitem"
-                @click="goTo('/admin/tipos')"
-              >
-                <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor"
-                  stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0
-                       00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Tipos de Documento
-              </button>
-            </template>
+        <!-- Dropdown panel -->
+        <transition
+          enter-active-class="transition ease-out duration-100"
+          enter-from-class="opacity-0 scale-95"
+          enter-to-class="opacity-100 scale-100"
+          leave-active-class="transition ease-in duration-75"
+          leave-from-class="opacity-100 scale-100"
+          leave-to-class="opacity-0 scale-95"
+        ><div
+            v-if="adminMenuOpen"
+            class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100
+                   py-1 origin-top-right"
+            role="menu"
+          >
+          <!-- Info Organizacional -->
+            <button
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700
+                     hover:bg-gray-50 transition text-left"
+              role="menuitem"
+              @click="goTo('/info-organizacional')"
+            >
+              Datos Agencia
+            </button>
+            <!-- Contactos Aduana -->
+            <button
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700
+                     hover:bg-gray-50 transition text-left"
+              role="menuitem"
+              @click="goTo('/contacts')"
+            >
+              Contactos Aduana
+            </button>
+            <!-- Organizaciones (System Users Only) -->
+            <button
+              v-if="auth.systemFlag"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-indigo-700 font-medium
+                     hover:bg-indigo-50 transition text-left border-t border-gray-100"
+              role="menuitem"
+              @click="goTo('/organizaciones')"
+            >
+              Organizaciones
+            </button>
           </div>
         </transition>
       </div>

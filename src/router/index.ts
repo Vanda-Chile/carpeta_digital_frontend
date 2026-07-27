@@ -5,7 +5,10 @@ import DocumentView from '../views/DocumentView.vue'
 import LoginView from '../views/LoginView.vue'
 import SearchView from '../views/SearchView.vue'
 import NuevaCarpetaView from '../views/NuevaCarpetaView.vue'
-import TiposDocumentoView from '../views/TiposDocumentoView.vue'
+import ContactsView from '../views/ContactsView.vue'
+import RevisionsView from '../views/RevisionsView.vue'
+import OrganizationsView from '../views/OrganizationsView.vue'
+import AgencyInfoView from '../views/AgencyInfoView.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const router = createRouter({
@@ -16,8 +19,11 @@ const router = createRouter({
         { path: '/folder/:id', component: FolderView },
         { path: '/folder/:id/document/:docId', component: DocumentView },
         { path: '/buscar', component: SearchView },
+        { path: '/buscar-revisiones', component: RevisionsView },
         { path: '/nueva', component: NuevaCarpetaView },
-        { path: '/admin/tipos', component: TiposDocumentoView },
+        { path: '/contacts', component: ContactsView },
+        { path: '/info-organizacional', component: AgencyInfoView },
+        { path: '/organizaciones', component: OrganizationsView, meta: { requiresSystemFlag: true } },
     ],
 })
 
@@ -27,6 +33,9 @@ router.beforeEach((to) => {
         return '/login'
     }
     if (to.path === '/login' && auth.isAuthenticated) {
+        return '/'
+    }
+    if (to.meta.requiresSystemFlag && !auth.systemFlag) {
         return '/'
     }
 })

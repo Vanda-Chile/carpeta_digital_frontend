@@ -47,13 +47,43 @@ export interface ApiFolder {
     id: string           // system UUID
     numero_despacho: string
     operacion: string    // 'importacion' | 'exportacion'
-    user_id: number
+    user_id: string | number
+    user_name: string | null
     client_rut: string | null
     client: ApiClient | null
+    agent_id?: string | null
+    agent?: ApiAgent | null
+    numero_aceptacion: string | null
+    fecha_aceptacion: string | null
     created_at: string
     closed_at: string | null
     document_count: number
     state: string        // 'open' | 'closed'
+}
+
+export interface ApiPaginatedFolders {
+    items: ApiFolder[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+}
+
+export interface FolderFilterParams {
+    numero_despacho?: string
+    numero_aceptacion?: string
+    client?: string
+    agent_id?: string
+    creating_user?: string
+    state?: string
+    operacion?: string
+    has_documents?: string
+    desde?: string
+    hasta?: string
+    sort_by?: 'created_at' | 'fecha_aceptacion' | 'numero_despacho'
+    order?: 'asc' | 'desc'
+    page?: number
+    limit?: number
 }
 
 export interface ApiStats {
@@ -63,6 +93,8 @@ export interface ApiStats {
     documents_this_month: number
     total_clients: number
     month: string
+    period?: string
+    period_label?: string
 }
 
 export interface ApiDocument {
@@ -93,9 +125,67 @@ export interface ApiBitacoraEntry {
     timestamp: string
 }
 
+export interface ApiContact {
+    id: number
+    name: string
+    email: string
+}
+
+export interface ApiRevision {
+    id: number
+    document_id: string
+    result: string
+    novedad: boolean
+    created_at: string
+    numero_despacho: string
+    folder_id: string
+    document_tipo: string | null
+}
+
+export interface ApiObservation {
+    id: number
+    document_id: string
+    text: string
+    created_at: string
+    user_name: string | null
+}
+
 export const api = {
     stats: {
-        get: () => request<ApiStats>('/folders/stats'),
+        get: (period: string = 'month') => request<ApiStats>(`/folders/stats?period=${encodeURIComponent(period)}`),
+    },
+    revisions: {
+        list: (params?: { q?: string; result?: string; novedad?: boolean; doc_type?: string; date_from?: string; date_to?: string }) => {
+            const query = new URLSearchParams()
+            if (params?.q) query.set('q', params.q)
+            if (params?.result) query.set('result', params.result)
+            if (params?.novedad !== undefined) query.set('novedad', String(params.novedad))
+            if (params?.doc_type) query.set('doc_type', params.doc_type)
+            if (params?.date_from) query.set('date_from', params.date_from)
+            if (params?.date_to) query.set('date_to', params.date_to)
+            const qStr = query.toString() ? `?${query.toString()}` : ''
+            return request<ApiRevision[]>(`/revisions/${qStr}`)
+        },
+    },
+    contacts: {
+        list: () =>
+            request<ApiContact[]>('/contacts/'),
+        get: (id: number) =>
+            request<ApiContact>(`/contacts/${id}`),
+        create: (payload: { name: string; email: string }) =>
+            request<ApiContact>('/contacts/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        update: (id: number, payload: { name?: string; email?: string }) =>
+            request<ApiContact>(`/contacts/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        delete: (id: number) =>
+            request<void>(`/contacts/${id}`, { method: 'DELETE' }),
     },
     documentTypes: {
         listActive: () =>
@@ -126,11 +216,37 @@ export const api = {
             }),
     },
     folders: {
-        list: () =>
-            request<ApiFolder[]>('/folders/'),
+        list: (params?: FolderFilterParams) => {
+            const query = new URLSearchParams()
+            if (params?.numero_despacho) query.set('numero_despacho', params.numero_despacho)
+            if (params?.numero_aceptacion) query.set('numero_aceptacion', params.numero_aceptacion)
+            if (params?.client) query.set('client', params.client)
+            const agentVal = params?.agent_id || (params as { agent?: string })?.agent
+            if (agentVal) query.set('agent_id', agentVal)
+            if (params?.creating_user) query.set('creating_user', params.creating_user)
+            if (params?.state) query.set('state', params.state)
+            if (params?.operacion) query.set('operacion', params.operacion)
+            if (params?.has_documents) query.set('has_documents', params.has_documents)
+            if (params?.desde) query.set('desde', params.desde)
+            if (params?.hasta) query.set('hasta', params.hasta)
+            if (params?.sort_by) query.set('sort_by', params.sort_by)
+            if (params?.order) query.set('order', params.order)
+            if (params?.page) query.set('page', params.page.toString())
+            if (params?.limit) query.set('limit', params.limit.toString())
+            const qs = query.toString()
+            return request<ApiPaginatedFolders>(`/folders/${qs ? `?${qs}` : ''}`)
+        },
         get: (uuid: string) =>
             request<ApiFolder>(`/folders/${uuid}`),
-        create: (payload: { numero_despacho: string; operacion?: string; client_rut?: string; client_razon_social?: string }) =>
+        create: (payload: {
+            numero_despacho: string
+            operacion?: string
+            client_rut?: string
+            client_razon_social?: string
+            agent_id?: string
+            numero_aceptacion?: string
+            fecha_aceptacion?: string
+        }) =>
             request<ApiFolder>('/folders/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -166,6 +282,18 @@ export const api = {
         },
         audit: (uuid: string) =>
             request<ApiBitacoraEntry[]>(`/folders/${uuid}/audit`),
+        sendEmail: (uuid: string, payload: { to_email: string; subject?: string; message?: string }) =>
+            request<{ message: string }>(`/folders/${uuid}/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        sendAduana: (uuid: string, payload: { contact_ids: number[]; validity_days?: number }) =>
+            request<{ message: string; sent_count: number }>(`/folders/${uuid}/send-aduana`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
     },
     documents: {
         list: (folderUuid: string) =>
@@ -190,9 +318,107 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ state }),
             }),
+        updateType: (folderUuid: string, docId: string, tipo: string) =>
+            request<ApiDocument>(`/folders/${folderUuid}/documents/${docId}/type`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo }),
+            }),
         search: (q: string) =>
             request<ApiDocument[]>(`/documents/?q=${encodeURIComponent(q)}`),
         downloadUrl: (folderUuid: string, docId: string) =>
             `${BASE_URL}/folders/${folderUuid}/documents/${docId}/download`,
+        addObservation: (folderUuid: string, docId: string, text: string) =>
+            request<ApiObservation>(`/folders/${folderUuid}/documents/${docId}/observations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
+            }),
+        listObservations: (folderUuid: string, docId: string) =>
+            request<ApiObservation[]>(`/folders/${folderUuid}/documents/${docId}/observations`),
+    },
+    organizations: {
+        list: () => request<ApiOrganization[]>('/organizations/'),
+        create: (payload: { name: string; code?: string | null; systemFlag: boolean }) =>
+            request<ApiOrganization>('/organizations/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        listUsers: (orgId: string) =>
+            request<ApiOrganizationUser[]>(`/organizations/${orgId}/users`),
+        addUser: (orgId: string, payload: { user_id: string; is_admin: boolean }) =>
+            request<ApiOrganizationUser>(`/organizations/${orgId}/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        updateUser: (orgId: string, userId: string, payload: { user_id: string; is_admin: boolean }) =>
+            request<ApiOrganizationUser>(`/organizations/${orgId}/users/${userId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        removeUser: (orgId: string, userId: string) =>
+            request<void>(`/organizations/${orgId}/users/${userId}`, {
+                method: 'DELETE',
+            }),
+    },
+    agents: {
+        getMyAgency: () => request<ApiAgencyDetails>('/agents/my-agency'),
+        list: () => request<ApiAgent[]>('/agents/'),
+        create: (payload: { name: string; code?: string; rut?: string; pin: boolean; slot: boolean }) =>
+            request<ApiAgent>('/agents/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        update: (id: string, payload: Partial<{ name: string; code?: string; rut?: string; pin: boolean; slot: boolean }>) =>
+            request<ApiAgent>(`/agents/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        delete: (id: string) =>
+            request<void>(`/agents/${id}`, {
+                method: 'DELETE',
+            }),
     },
 }
+
+export interface ApiOrganizationUser {
+    id: string
+    organization_id: string
+    user_id: string
+    is_admin: boolean
+}
+
+export interface ApiOrganization {
+    id: string
+    name: string
+    code?: string | null
+    systemFlag: boolean
+    user_count: number
+    users: ApiOrganizationUser[]
+}
+
+export interface ApiAgent {
+    id: string
+    name: string
+    organization_id?: string | null
+    code?: string | null
+    rut?: string | null
+    pin: boolean
+    slot: boolean
+}
+
+export interface ApiAgencyDetails {
+    id: string
+    name: string
+    code?: string | null
+    systemFlag: boolean
+    agents: ApiAgent[]
+}
+
+
+
