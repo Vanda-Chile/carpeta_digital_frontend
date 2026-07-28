@@ -58,6 +58,7 @@ export interface ApiFolder {
     created_at: string
     closed_at: string | null
     document_count: number
+    needs_signing?: boolean
     state: string        // 'open' | 'closed'
 }
 
@@ -78,6 +79,7 @@ export interface FolderFilterParams {
     state?: string
     operacion?: string
     has_documents?: string
+    needs_signing?: string
     desde?: string
     hasta?: string
     sort_by?: 'created_at' | 'fecha_aceptacion' | 'numero_despacho'
@@ -227,6 +229,7 @@ export const api = {
             if (params?.state) query.set('state', params.state)
             if (params?.operacion) query.set('operacion', params.operacion)
             if (params?.has_documents) query.set('has_documents', params.has_documents)
+            if (params?.needs_signing) query.set('needs_signing', params.needs_signing)
             if (params?.desde) query.set('desde', params.desde)
             if (params?.hasta) query.set('hasta', params.hasta)
             if (params?.sort_by) query.set('sort_by', params.sort_by)
@@ -384,6 +387,23 @@ export const api = {
                 method: 'DELETE',
             }),
     },
+    certificates: {
+        upload: (agentId: string, file: File, password: string) => {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('password', password)
+            return request<ApiCertificate>(`/agents/${agentId}/certificate/`, {
+                method: 'POST',
+                body: formData,
+            })
+        },
+        get: (agentId: string) =>
+            request<ApiCertificate>(`/agents/${agentId}/certificate/`),
+        delete: (agentId: string) =>
+            request<void>(`/agents/${agentId}/certificate/`, {
+                method: 'DELETE',
+            }),
+    },
 }
 
 export interface ApiOrganizationUser {
@@ -402,6 +422,19 @@ export interface ApiOrganization {
     users: ApiOrganizationUser[]
 }
 
+export interface ApiCertificate {
+    id: string
+    agent_id: string
+    subject_cn: string | null
+    issuer: string | null
+    rut_firmante: string | null
+    valid_from: string | null
+    valid_until: string | null
+    fingerprint_sha256: string | null
+    is_active: boolean
+    created_at: string
+}
+
 export interface ApiAgent {
     id: string
     name: string
@@ -410,6 +443,7 @@ export interface ApiAgent {
     rut?: string | null
     pin: boolean
     slot: boolean
+    certificate?: ApiCertificate | null
 }
 
 export interface ApiAgencyDetails {

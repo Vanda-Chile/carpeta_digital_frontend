@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
+import AgentModal from '../components/AgentModal.vue'
+import CertificateModal from '../components/CertificateModal.vue'
 import { api, type ApiAgencyDetails, type ApiAgent } from '../api'
 
 const router = useRouter()
@@ -10,15 +12,13 @@ const loading = ref(true)
 const errorMsg = ref<string | null>(null)
 const successMsg = ref<string | null>(null)
 
-// Modal state
+// Agent Modal state
 const showAgentModal = ref(false)
 const editingAgent = ref<ApiAgent | null>(null)
-const agentName = ref('')
-const agentCode = ref('')
-const agentRut = ref('')
-const agentPin = ref(false)
-const agentSlot = ref(false)
-const submitting = ref(false)
+
+// Certificate Modal state
+const showCertModal = ref(false)
+const certAgent = ref<ApiAgent | null>(null)
 
 async function loadAgencyInfo() {
   loading.value = true
@@ -34,57 +34,24 @@ async function loadAgencyInfo() {
 
 function openCreateAgentModal() {
   editingAgent.value = null
-  agentName.value = ''
-  agentCode.value = ''
-  agentRut.value = ''
-  agentPin.value = false
-  agentSlot.value = false
   showAgentModal.value = true
 }
 
 function openEditAgentModal(agent: ApiAgent) {
   editingAgent.value = agent
-  agentName.value = agent.name
-  agentCode.value = agent.code || ''
-  agentRut.value = agent.rut || ''
-  agentPin.value = agent.pin
-  agentSlot.value = agent.slot
   showAgentModal.value = true
 }
 
-async function handleSaveAgent() {
-  const nameClean = agentName.value.trim()
-  if (!nameClean) return
+function openCertModal(agent: ApiAgent) {
+  certAgent.value = agent
+  showCertModal.value = true
+}
 
-  submitting.value = true
-  errorMsg.value = null
-  try {
-    if (editingAgent.value) {
-      await api.agents.update(editingAgent.value.id, {
-        name: nameClean,
-        code: agentCode.value.trim() || undefined,
-        rut: agentRut.value.trim() || undefined,
-        pin: agentPin.value,
-        slot: agentSlot.value,
-      })
-      successMsg.value = `Agente "${nameClean}" actualizado correctamente.`
-    } else {
-      await api.agents.create({
-        name: nameClean,
-        code: agentCode.value.trim() || undefined,
-        rut: agentRut.value.trim() || undefined,
-        pin: agentPin.value,
-        slot: agentSlot.value,
-      })
-      successMsg.value = `Agente "${nameClean}" creado exitosamente.`
-    }
-    showAgentModal.value = false
-    await loadAgencyInfo()
-  } catch (err: any) {
-    errorMsg.value = err.message || 'Error al guardar el agente.'
-  } finally {
-    submitting.value = false
-  }
+async function handleAgentSaved() {
+  successMsg.value = editingAgent.value
+    ? `Agente "${editingAgent.value.name}" actualizado correctamente.`
+    : 'Agente registrado exitosamente.'
+  await loadAgencyInfo()
 }
 
 async function handleDeleteAgent(agent: ApiAgent) {
@@ -99,10 +66,15 @@ async function handleDeleteAgent(agent: ApiAgent) {
   }
 }
 
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text)
-  successMsg.value = 'Texto copiado al portapapeles'
-  setTimeout(() => (successMsg.value = null), 3000)
+function formatDate(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleDateString('es-CL', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+function isExpired(validUntil?: string | null): boolean {
+  if (!validUntil) return false
+  return new Date(validUntil).getTime() < Date.now()
 }
 
 onMounted(() => {
@@ -111,127 +83,97 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col font-sans">
+  <div class="min-h-screen bg-slate-50 flex flex-col font-sans antialiased text-slate-800">
     <AppHeader />
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
-      <!-- Top Title Bar -->
-      <div class="mb-8">
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Datos de la Agencia</h1>
-        <p class="text-sm text-slate-500 mt-1">
-          Consulte la información organizacional y administre la nómina de agentes asociados.
-        </p>
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Top Bar: Title & Action -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Datos Agencia</h1>
+            <span
+              v-if="agency?.systemFlag"
+              class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300"
+            >
+              ADMINISTRADOR SISTEMA
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">
+            Información de la organización y gestión de agentes aduanales asociados.
+          </p>
+        </div>
+
+        <button
+          v-if="agency"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-sm transition"
+          @click="openCreateAgentModal"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Nuevo Agente
+        </button>
       </div>
 
-      <!-- Alerts -->
-      <div v-if="successMsg" class="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center justify-between shadow-sm">
-        <span>{{ successMsg }}</span>
-        <button class="text-emerald-600 hover:text-emerald-900 font-bold" @click="successMsg = null">✕</button>
-      </div>
-      <div v-if="errorMsg" class="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-sm flex items-center justify-between shadow-sm">
+      <!-- Feedback Messages -->
+      <div v-if="errorMsg" class="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl flex items-center justify-between shadow-xs">
         <span>{{ errorMsg }}</span>
-        <button class="text-rose-600 hover:text-rose-900 font-bold" @click="errorMsg = null">✕</button>
+        <button @click="errorMsg = null" class="font-bold ml-2 text-rose-500 hover:text-rose-700">✕</button>
       </div>
 
-      <!-- Loading Spinner -->
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+      <div v-if="successMsg" class="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-2xl flex items-center justify-between shadow-xs">
+        <span>{{ successMsg }}</span>
+        <button @click="successMsg = null" class="font-bold ml-2 text-emerald-500 hover:text-emerald-700">✕</button>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center py-24">
+        <svg class="animate-spin w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
       </div>
 
       <template v-else-if="agency">
-        <!-- ── Agency Information Header Card ── -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-8">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+        <!-- Organization Info Banner Card -->
+        <div class="bg-white rounded-3xl p-6 mb-8 border border-slate-100 shadow-sm">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Organización</span>
-              <h2 class="text-2xl font-black text-slate-900 mt-0.5">{{ agency.name }}</h2>
-            </div>
-            <span
-              v-if="agency.systemFlag"
-              class="self-start sm:self-auto inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold px-3 py-1 rounded-full"
-            >
-              <svg class="w-2.5 h-2.5 text-indigo-600 fill-current" viewBox="0 0 8 8">
-                <circle cx="4" cy="4" r="3" />
-              </svg>
-              Organización del Sistema
-            </span>
-            <span
-              v-else
-              class="self-start sm:self-auto inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium px-3 py-1 rounded-full"
-            >
-              Organización Estándar
-            </span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
-            <!-- Code -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código de Agencia</span>
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-mono text-sm font-bold text-slate-800">{{ agency.code || 'Sin código asignado' }}</span>
-                <button
-                  v-if="agency.code"
-                  class="text-slate-400 hover:text-indigo-600 p-1"
-                  title="Copiar código"
-                  @click="copyToClipboard(agency.code!)"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Nombre Organización</span>
+              <span class="text-base font-bold text-slate-900">{{ agency.name }}</span>
             </div>
 
-            <!-- ID -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">ID Organizacional</span>
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-mono text-xs text-slate-600 truncate" :title="agency.id">{{ agency.id }}</span>
-                <button
-                  class="text-slate-400 hover:text-indigo-600 p-1 shrink-0"
-                  title="Copiar ID"
-                  @click="copyToClipboard(agency.id)"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
+            <div>
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Código Organización</span>
+              <span class="text-sm font-mono font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg inline-block">
+                {{ agency.code || 'Sin código' }}
+              </span>
             </div>
 
-            <!-- Total Agents -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <span class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Agentes Registrados</span>
-              <span class="text-xl font-black text-indigo-600">{{ agency.agents.length }}</span>
+            <div>
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">ID Sistema</span>
+              <span class="text-xs font-mono text-slate-500 truncate block select-all" :title="agency.id">
+                {{ agency.id }}
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- ── Agents Section ── -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <!-- Section: Agents -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
             <div>
-              <h3 class="text-lg font-bold text-slate-900">Agentes Asociados</h3>
-              <p class="text-xs text-slate-500">Listado de agentes aduanales vinculados a esta organización con sus flags de PIN y Slot.</p>
+              <h3 class="text-base font-bold text-slate-900">Agentes Aduanales</h3>
+              <p class="text-xs text-slate-500">Agentes vinculados a esta organización</p>
             </div>
-            <button
-              class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm transition active:scale-95 self-start sm:self-auto"
-              @click="openCreateAgentModal"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar Agente
-            </button>
+            <span class="px-3 py-1 bg-slate-100 text-slate-700 font-bold text-xs rounded-full">
+              Total: {{ agency.agents.length }}
+            </span>
           </div>
 
-          <!-- Empty State -->
-          <div v-if="agency.agents.length === 0" class="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 inline-flex items-center justify-center mb-3">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
+          <!-- Empty Agents State -->
+          <div v-if="agency.agents.length === 0" class="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
             <h4 class="text-sm font-bold text-slate-700 mb-1">No hay agentes asociados</h4>
             <p class="text-xs text-slate-400 mb-4">Agregue agentes aduanales a la organización usando el botón superior.</p>
             <button
@@ -251,6 +193,7 @@ onMounted(() => {
                   <th class="py-3.5 px-4">Código</th>
                   <th class="py-3.5 px-4">RUT</th>
                   <th class="py-3.5 px-4">Flags</th>
+                  <th class="py-3.5 px-4">Certificado Digital</th>
                   <th class="py-3.5 px-4 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -281,8 +224,38 @@ onMounted(() => {
                       </span>
                     </div>
                   </td>
+                  <td class="py-3.5 px-4">
+                    <div v-if="agent.certificate" class="flex flex-col gap-0.5">
+                      <div class="flex items-center gap-1.5">
+                        <span
+                          class="inline-block w-2 h-2 rounded-full"
+                          :class="isExpired(agent.certificate.valid_until) ? 'bg-rose-500' : 'bg-emerald-500'"
+                        ></span>
+                        <span class="font-medium text-slate-800">
+                          {{ agent.certificate.subject_cn || 'Certificado X.509' }}
+                        </span>
+                      </div>
+                      <span
+                        class="text-[10px]"
+                        :class="isExpired(agent.certificate.valid_until) ? 'text-rose-600 font-semibold' : 'text-slate-400'"
+                      >
+                        {{ isExpired(agent.certificate.valid_until) ? '⚠️ Expirado' : `Vence: ${formatDate(agent.certificate.valid_until)}` }}
+                      </span>
+                    </div>
+                    <span v-else class="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-400 border border-slate-200">
+                      Sin Certificado
+                    </span>
+                  </td>
                   <td class="py-3.5 px-4 text-right">
                     <div class="inline-flex items-center gap-2">
+                      <button
+                        class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-xs transition flex items-center gap-1"
+                        title="Gestionar certificado digital (.pfx)"
+                        @click="openCertModal(agent)"
+                      >
+                        <span>📜</span>
+                        <span>Certificado</span>
+                      </button>
                       <button
                         class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs transition"
                         title="Ver carpetas asociadas a este agente"
@@ -317,96 +290,20 @@ onMounted(() => {
         </div>
 
         <!-- ── Modal: Create / Edit Agent ── -->
-        <Teleport to="body">
-          <div v-if="showAgentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-              <div class="flex items-center justify-between mb-5">
-                <h3 class="text-lg font-bold text-slate-900">
-                  {{ editingAgent ? 'Editar Agente' : 'Nuevo Agente' }}
-                </h3>
-                <button class="text-slate-400 hover:text-slate-600 text-lg p-1" @click="showAgentModal = false">✕</button>
-              </div>
+        <AgentModal
+          :show="showAgentModal"
+          :agent="editingAgent"
+          @close="showAgentModal = false"
+          @saved="handleAgentSaved"
+        />
 
-              <form @submit.prevent="handleSaveAgent" class="space-y-4">
-                <div>
-                  <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre del Agente *</label>
-                  <input
-                    v-model="agentName"
-                    type="text"
-                    required
-                    placeholder="Ej: Juan Pérez"
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Código</label>
-                    <input
-                      v-model="agentCode"
-                      type="text"
-                      placeholder="Ej: AGT-01"
-                      class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">RUT</label>
-                    <input
-                      v-model="agentRut"
-                      type="text"
-                      placeholder="Ej: 12345678-9"
-                      class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <label for="pinCheck" class="text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                      Flag PIN
-                    </label>
-                    <input
-                      id="pinCheck"
-                      v-model="agentPin"
-                      type="checkbox"
-                      class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div class="flex items-center justify-between border-t border-slate-200/60 pt-3">
-                    <label for="slotCheck" class="text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                      Flag Slot
-                    </label>
-                    <input
-                      id="slotCheck"
-                      v-model="agentSlot"
-                      type="checkbox"
-                      class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                  <button
-                    type="button"
-                    class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition"
-                    @click="showAgentModal = false"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    :disabled="submitting || !agentName.trim()"
-                    class="px-5 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"
-                  >
-                    {{ submitting ? 'Guardando...' : (editingAgent ? 'Guardar Cambios' : 'Crear Agente') }}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </Teleport>
+        <!-- ── Modal: Manage Digital Certificate ── -->
+        <CertificateModal
+          :show="showCertModal"
+          :agent="certAgent"
+          @close="showCertModal = false"
+          @updated="loadAgencyInfo"
+        />
       </template>
     </main>
   </div>

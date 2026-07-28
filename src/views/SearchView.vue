@@ -23,6 +23,7 @@ const filterHasta = ref('')
 const filterState = ref('open')
 const filterOperacion = ref('')
 const filterDocs = ref('')
+const filterNeedsSigning = ref('')
 const sortBy = ref<'created_at' | 'fecha_aceptacion' | 'numero_despacho'>('created_at')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 const currentPage = ref(1)
@@ -42,6 +43,7 @@ function applyFilters(page = 1) {
   if (filterState.value && filterState.value !== 'open') query.state = filterState.value
   if (filterOperacion.value) query.operacion = filterOperacion.value
   if (filterDocs.value) query.has_documents = filterDocs.value
+  if (filterNeedsSigning.value) query.needs_signing = filterNeedsSigning.value
   if (filterDesde.value) query.desde = filterDesde.value
   if (filterHasta.value) query.hasta = filterHasta.value
   if (currentPage.value > 1) query.page = String(currentPage.value)
@@ -57,6 +59,7 @@ function applyFilters(page = 1) {
     state: filterState.value || undefined,
     operacion: filterOperacion.value || undefined,
     has_documents: filterDocs.value || undefined,
+    needs_signing: filterNeedsSigning.value || undefined,
     desde: filterDesde.value || undefined,
     hasta: filterHasta.value || undefined,
     sort_by: sortBy.value,
@@ -77,6 +80,7 @@ function clearFilters() {
   filterState.value = 'open'
   filterOperacion.value = ''
   filterDocs.value = ''
+  filterNeedsSigning.value = ''
   sortBy.value = 'created_at'
   sortOrder.value = 'desc'
   itemsPerPage.value = 30
@@ -95,6 +99,11 @@ function selectOperacion(opVal: string) {
 
 function selectDocs(docVal: string) {
   filterDocs.value = docVal
+  applyFilters(1)
+}
+
+function selectNeedsSigning(val: string) {
+  filterNeedsSigning.value = val
   applyFilters(1)
 }
 
@@ -119,6 +128,7 @@ const hasFilters = computed(() =>
   filterState.value !== 'open' ||
   filterOperacion.value !== '' ||
   filterDocs.value !== '' ||
+  filterNeedsSigning.value !== '' ||
   sortBy.value !== 'created_at' ||
   sortOrder.value !== 'desc' ||
   itemsPerPage.value !== 30
@@ -134,6 +144,16 @@ onMounted(async () => {
   if (qAgent) {
     filterAgent.value = qAgent
   }
+  if (route.query.numero_despacho) filterDespacho.value = route.query.numero_despacho as string
+  if (route.query.numero_aceptacion) filterAceptacion.value = route.query.numero_aceptacion as string
+  if (route.query.client) filterCliente.value = route.query.client as string
+  if (route.query.creating_user) filterUser.value = route.query.creating_user as string
+  if (route.query.state) filterState.value = route.query.state as string
+  if (route.query.operacion) filterOperacion.value = route.query.operacion as string
+  if (route.query.has_documents) filterDocs.value = route.query.has_documents as string
+  if (route.query.needs_signing) filterNeedsSigning.value = route.query.needs_signing as string
+  if (route.query.desde) filterDesde.value = route.query.desde as string
+  if (route.query.hasta) filterHasta.value = route.query.hasta as string
   applyFilters(1)
 })
 
@@ -303,6 +323,20 @@ function openFolder(uuid: string) {
             >{{ opt.label }}</button>
           </div>
 
+          <!-- Pendiente Firma -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500">Firma:</span>
+            <button
+              v-for="opt in [{ value: '', label: 'Todas' }, { value: 'yes', label: 'Requiere Firma' }, { value: 'no', label: 'No requiere' }]"
+              :key="opt.value"
+              :class="filterNeedsSigning === opt.value
+                ? 'bg-indigo-600 text-white font-semibold shadow-xs'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'"
+              class="rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer"
+              @click="selectNeedsSigning(opt.value)"
+            >{{ opt.label }}</button>
+          </div>
+
           <!-- Orden -->
           <div class="flex items-center gap-2">
             <span class="text-xs font-medium text-gray-500">Orden:</span>
@@ -441,10 +475,19 @@ function openFolder(uuid: string) {
                   </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span
-                    :class="f.state === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-                    class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  >{{ f.state === 'open' ? 'Abierta' : 'Cerrada' }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span
+                      :class="f.state === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                      class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    >{{ f.state === 'open' ? 'Abierta' : 'Cerrada' }}</span>
+                    <span
+                      v-if="f.needs_signing"
+                      class="rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1"
+                      title="Todos los documentos han sido aceptados"
+                    >
+                      <span>Requiere Firma</span>
+                    </span>
+                  </div>
                 </td>
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ formatDate(f.created_at) }}</td>
               </tr>
