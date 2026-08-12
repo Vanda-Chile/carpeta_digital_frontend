@@ -76,14 +76,27 @@ async function upload() {
   errorMsg.value = ''
 
   try {
-    const content = await readAsBase64(selectedFile.value)
+    const filename = selectedFile.value.name
+    const mime_type = selectedFile.value.type || 'application/pdf'
+
+    // 1. Get GCS pre-signed upload URL
+    const { upload_url, temp_path } = await api.documents.getUploadUrl(props.folderId, {
+      filename,
+      mime_type,
+    })
+
+    // 2. Upload directly to GCS
+    await api.documents.uploadToGcs(upload_url, selectedFile.value)
+
+    // 3. Create document record and move file in GCS
     const doc = await api.documents.upload(props.folderId, {
-      filename: selectedFile.value.name,
-      mime_type: selectedFile.value.type || 'application/octet-stream',
-      content,
+      filename,
+      temp_path,
+      mime_type,
       observacion: observacion.value.trim() || undefined,
       tipo: tipoSelected.value?.nombre ?? undefined,
     })
+
     store.addToCache(props.folderId, doc)
     emit('close')
   } catch (e: unknown) {
@@ -91,19 +104,6 @@ async function upload() {
   } finally {
     isProcessing.value = false
   }
-}
-
-function readAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // Strip the data URL prefix (e.g. "data:image/png;base64,")
-      resolve(result.split(',')[1])
-    }
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
 }
 </script>
 

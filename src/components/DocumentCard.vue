@@ -33,9 +33,13 @@ function docIcon(mimeType: string): string {
   return entry ? entry[1] : '📎'
 }
 
-function openDoc() {
-  const url = api.documents.downloadUrl(props.doc.folder_id, props.doc.id)
-  window.open(url, '_blank', 'noopener,noreferrer')
+async function openDoc() {
+  try {
+    const { url } = await api.documents.getUrl(props.doc.folder_id, props.doc.id)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'No se pudo obtener la URL del documento.')
+  }
 }
 </script>
 

@@ -301,9 +301,30 @@ export const api = {
     documents: {
         list: (folderUuid: string) =>
             request<ApiDocument[]>(`/folders/${folderUuid}/documents/`),
+        getUploadUrl: (
+            folderUuid: string,
+            payload: { filename: string; mime_type: string },
+        ) =>
+            request<{ upload_url: string; temp_path: string; expires_in: number }>(`/folders/${folderUuid}/documents/upload-url`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        uploadToGcs: async (uploadUrl: string, file: File) => {
+            const res = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                },
+                body: file,
+            })
+            if (!res.ok) {
+                throw new Error(`Error al subir archivo a GCS: ${res.statusText} (${res.status})`)
+            }
+        },
         upload: (
             folderUuid: string,
-            payload: { filename: string; mime_type: string; content: string; observacion?: string; tipo?: string },
+            payload: { filename: string; temp_path: string; mime_type: string; observacion?: string; tipo?: string },
         ) =>
             request<ApiDocument>(`/folders/${folderUuid}/documents/`, {
                 method: 'POST',
@@ -329,6 +350,8 @@ export const api = {
             }),
         search: (q: string) =>
             request<ApiDocument[]>(`/documents/?q=${encodeURIComponent(q)}`),
+        getUrl: (folderUuid: string, docId: string) =>
+            request<{ url: string }>(`/folders/${folderUuid}/documents/${docId}/url`),
         downloadUrl: (folderUuid: string, docId: string) =>
             `${BASE_URL}/folders/${folderUuid}/documents/${docId}/download`,
         addObservation: (folderUuid: string, docId: string, text: string) =>

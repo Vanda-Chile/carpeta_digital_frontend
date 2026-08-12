@@ -23,10 +23,25 @@ function navigateTo(id: string) {
   router.replace(`/folder/${encodeURIComponent(folderId.value)}/document/${encodeURIComponent(id)}`)
 }
 
-const iframeUrl = computed(() => api.documents.downloadUrl(folderId.value, docId.value))
+const iframeUrl = ref('')
 const iframeLoading = ref(true)
 const iframeError = ref(false)
 const stateLoading = ref(false)
+
+async function loadDocumentUrl() {
+  if (!folderId.value || !docId.value) return
+  iframeLoading.value = true
+  iframeError.value = false
+  try {
+    const res = await api.documents.getUrl(folderId.value, docId.value)
+    iframeUrl.value = res.url
+  } catch (e: unknown) {
+    console.error('Error loading GCS document URL:', e)
+    iframeError.value = true
+  } finally {
+    iframeLoading.value = false
+  }
+}
 
 // Observations state
 const showObsModal = ref(false)
@@ -82,8 +97,7 @@ async function setState(newState: string) {
 
 // Reset iframe state and fetch observations when navigating between documents
 watch(docId, () => {
-  iframeLoading.value = true
-  iframeError.value = false
+  loadDocumentUrl()
   fetchObservations()
 })
 
@@ -91,6 +105,7 @@ onMounted(async () => {
   if (store.getDocuments(folderId.value).length === 0) {
     await store.fetchDocuments(folderId.value)
   }
+  loadDocumentUrl()
   fetchObservations()
 })
 
