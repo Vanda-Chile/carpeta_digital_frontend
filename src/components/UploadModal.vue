@@ -86,7 +86,7 @@ async function upload() {
     })
 
     // 2. Upload directly to GCS
-    await api.documents.uploadToGcs(upload_url, selectedFile.value)
+    await api.documents.uploadToGcs(upload_url, selectedFile.value, mime_type)
 
     // 3. Create document record and move file in GCS
     const doc = await api.documents.upload(props.folderId, {

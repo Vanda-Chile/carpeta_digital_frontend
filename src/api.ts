@@ -310,11 +310,12 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             }),
-        uploadToGcs: async (uploadUrl: string, file: File) => {
+        uploadToGcs: async (uploadUrl: string, file: File, contentType?: string) => {
+            const mimeType = contentType || file.type || 'application/pdf'
             const res = await fetch(uploadUrl, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': file.type || 'application/octet-stream',
+                    'Content-Type': mimeType,
                 },
                 body: file,
             })
