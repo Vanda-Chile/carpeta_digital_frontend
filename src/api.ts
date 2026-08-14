@@ -9,9 +9,23 @@ function getAuthHeaders(): Record<string, string> {
     return headers
 }
 
+function handleUnauthorized() {
+    sessionStorage.removeItem('cd_access_token')
+    sessionStorage.removeItem('cd_refresh_token')
+    sessionStorage.removeItem('cd_session_id')
+    sessionStorage.removeItem('cd_user_info')
+    if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+    }
+}
+
 async function requestBlob(path: string, options?: RequestInit): Promise<Blob> {
     const headers = new Headers({ ...getAuthHeaders(), ...options?.headers })
     const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+    if (res.status === 401) {
+        handleUnauthorized()
+        throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.')
+    }
     if (!res.ok) {
         let detail = `Error ${res.status}`
         try {
@@ -26,6 +40,10 @@ async function requestBlob(path: string, options?: RequestInit): Promise<Blob> {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const headers = new Headers({ ...getAuthHeaders(), ...options?.headers })
     const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+    if (res.status === 401) {
+        handleUnauthorized()
+        throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.')
+    }
     if (res.status === 204) return undefined as T
     if (!res.ok) {
         let detail = `Error ${res.status}`

@@ -58,6 +58,13 @@ async function fetchOrganizationProfile(token: string) {
         if (GATEWAY_APIKEY) headers['apikey'] = GATEWAY_APIKEY
 
         const res = await fetch(`${BACKEND_URL}/auth/me`, { headers })
+        if (res.status === 401) {
+            Object.values(KEYS).forEach((k) => sessionStorage.removeItem(k))
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login'
+            }
+            return null
+        }
         if (res.ok) {
             return await res.json()
         } else {
