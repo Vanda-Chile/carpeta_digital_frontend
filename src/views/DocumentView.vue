@@ -177,6 +177,19 @@ function formatSize(bytes: number): string {
           </svg>
           Rechazar
         </button>
+
+        <!-- Clasificar button -->
+        <router-link
+          :to="`/folder/${encodeURIComponent(folderId)}/document/${encodeURIComponent(docId)}/classify`"
+          class="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-sm font-semibold text-indigo-700
+                 hover:bg-indigo-100 transition cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+          </svg>
+          Clasificar
+        </router-link>
         <span
           v-if="doc.state === 'accepted' || doc.state === 'rejected'"
           :class="doc.state === 'accepted' ? 'text-green-600' : 'text-red-600'"

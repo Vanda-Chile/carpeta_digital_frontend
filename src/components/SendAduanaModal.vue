@@ -5,6 +5,7 @@ import { api, type ApiContact } from '../api'
 const props = defineProps<{
   folderId: string
   despacho?: string
+  folderState?: string
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +22,8 @@ const sent = ref(false)
 const successMessage = ref('')
 const error = ref('')
 const searchQuery = ref('')
+
+const isClosed = computed(() => props.folderState === 'closed')
 
 const filteredContacts = computed(() => {
   if (!searchQuery.value.trim()) return contacts.value
@@ -113,6 +116,17 @@ async function handleSend() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+      </div>
+
+      <!-- Warning if folder is not closed/signed -->
+      <div v-if="!isClosed" class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <div>
+          <p class="font-bold mb-0.5">La carpeta aún no ha sido firmada</p>
+          <p>Para enviar la carpeta de despacho a Aduana, primero debe firmar y cerrar la carpeta con el certificado digital correspondiente.</p>
+        </div>
       </div>
 
       <!-- Success message -->
@@ -222,9 +236,9 @@ async function handleSend() {
           </button>
           <button
             type="submit"
-            :disabled="sending || selectedContactIds.length === 0"
+            :disabled="sending || !isClosed || selectedContactIds.length === 0"
             class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white
-                   hover:bg-blue-800 disabled:opacity-40 transition flex items-center gap-2 cursor-pointer"
+                   hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 cursor-pointer"
           >
             <svg v-if="sending" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import FolderView from '../views/FolderView.vue'
 import DocumentView from '../views/DocumentView.vue'
+import ClassifyDocumentView from '../views/ClassifyDocumentView.vue'
 import LoginView from '../views/LoginView.vue'
 import SearchView from '../views/SearchView.vue'
 import NuevaCarpetaView from '../views/NuevaCarpetaView.vue'
@@ -18,6 +19,8 @@ const router = createRouter({
         { path: '/', component: HomeView },
         { path: '/folder/:id', component: FolderView },
         { path: '/folder/:id/document/:docId', component: DocumentView },
+        { path: '/folder/:id/document/:docId/classify', component: ClassifyDocumentView },
+        { path: '/folder/:id/classify/:docId', redirect: to => `/folder/${to.params.id}/document/${to.params.docId}/classify` },
         { path: '/buscar', component: SearchView },
         { path: '/buscar-revisiones', component: RevisionsView },
         { path: '/nueva', component: NuevaCarpetaView },

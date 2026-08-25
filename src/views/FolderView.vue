@@ -6,7 +6,6 @@ import AppHeader from '../components/AppHeader.vue'
 import UploadModal from '../components/UploadModal.vue'
 import SignModal from '../components/SignModal.vue'
 import BitacoraModal from '../components/BitacoraModal.vue'
-import ClassifyModal from '../components/ClassifyModal.vue'
 import FolderDetailModal from '../components/FolderDetailModal.vue'
 import SendMailModal from '../components/SendMailModal.vue'
 import SendAduanaModal from '../components/SendAduanaModal.vue'
@@ -23,11 +22,9 @@ const pendingCount = computed(() => documents.value.filter(d => d.state === 'pen
 const showUpload = ref(false)
 const showSign = ref(false)
 const showBitacora = ref(false)
-const showClassify = ref(false)
 const showDetail = ref(false)
 const showSendMail = ref(false)
 const showSendAduana = ref(false)
-const selectedDocForClassify = ref<ApiDocument | null>(null)
 const signing = ref(false)
 const downloading = ref(false)
 const downloadingFirma = ref(false)
@@ -51,12 +48,7 @@ async function handleDelete(docId: string) {
 }
 
 function openClassify(doc: ApiDocument) {
-  selectedDocForClassify.value = doc
-  showClassify.value = true
-}
-
-function onDocumentClassified() {
-  store.fetchDocuments(folderId.value)
+  router.push(`/folder/${encodeURIComponent(folderId.value)}/document/${encodeURIComponent(doc.id)}/classify`)
 }
 
 async function handleSign() {
@@ -163,8 +155,10 @@ function formatDateTime(iso: string): string {
     <div class="max-w-7xl mx-auto px-4 pt-4 flex items-center justify-end gap-2">
       <!-- Enviar a Aduana -->
       <button
+        :disabled="folder?.state !== 'closed'"
+        :title="folder?.state !== 'closed' ? 'La carpeta debe estar firmada para poder enviarse a Aduana' : 'Enviar a Aduana'"
         class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700
-               hover:bg-blue-100 transition flex items-center gap-1.5 cursor-pointer"
+               hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer"
         @click="showSendAduana = true"
       >
         <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -390,13 +384,6 @@ function formatDateTime(iso: string): string {
       :folder="folder"
       @close="showDetail = false"
     />
-    <ClassifyModal
-      v-if="showClassify && selectedDocForClassify"
-      :folder-id="folderId"
-      :document="selectedDocForClassify"
-      @close="showClassify = false"
-      @updated="onDocumentClassified"
-    />
     <UploadModal
       v-if="showUpload"
       :folder-id="folderId"
@@ -406,6 +393,7 @@ function formatDateTime(iso: string): string {
       v-if="showSign"
       :folder-id="folderId"
       :pending-count="pendingCount"
+      :agent="folder?.agent"
       @close="showSign = false"
       @confirmed="handleSign"
     />
@@ -424,6 +412,7 @@ function formatDateTime(iso: string): string {
       v-if="showSendAduana"
       :folder-id="folderId"
       :despacho="folder?.numero_despacho"
+      :folder-state="folder?.state"
       @close="showSendAduana = false"
     />
   </div>
