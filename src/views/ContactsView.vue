@@ -3,8 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import { api, type ApiContact } from '../api'
+import { useAuthStore } from '../stores/authStore'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const contacts = ref<ApiContact[]>([])
 const loading = ref(false)
@@ -114,6 +116,7 @@ async function handleDelete(contact: ApiContact) {
           <p class="text-xs text-gray-500 mt-1">Gestión de contactos institucionales de aduana</p>
         </div>
         <button
+          v-if="auth.systemFlag"
           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                  hover:bg-indigo-700 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
           @click="openCreateModal"
@@ -147,7 +150,7 @@ async function handleDelete(contact: ApiContact) {
           </svg>
         </div>
         <p class="text-sm font-medium text-gray-600">No hay contactos registrados</p>
-        <p class="text-xs text-gray-400 mt-1">Hacé clic en "+ Nuevo Contacto" para agregar uno</p>
+        <p v-if="auth.systemFlag" class="text-xs text-gray-400 mt-1">Hacé clic en "+ Nuevo Contacto" para agregar uno</p>
       </div>
 
       <!-- Contacts Table -->
@@ -158,7 +161,7 @@ async function handleDelete(contact: ApiContact) {
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-16">ID</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nombre</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Correo Electrónico</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
+              <th v-if="auth.systemFlag" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -170,7 +173,7 @@ async function handleDelete(contact: ApiContact) {
                   {{ contact.email }}
                 </a>
               </td>
-              <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+              <td v-if="auth.systemFlag" class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                 <button
                   class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
                   @click="openEditModal(contact)"

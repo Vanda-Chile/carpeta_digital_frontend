@@ -56,6 +56,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return res.json()
 }
 
+export interface ApiAllowlistEntry {
+    id: number
+    cidr: string
+    label: string | null
+    enabled: boolean
+    created_by_name: string | null
+    created_at: string
+    updated_at: string | null
+}
+
 export interface ApiClient {
     rut: string
     razon_social: string
@@ -206,6 +216,24 @@ export const api = {
             }),
         delete: (id: number) =>
             request<void>(`/contacts/${id}`, { method: 'DELETE' }),
+    },
+    downloadAllowlist: {
+        list: () =>
+            request<ApiAllowlistEntry[]>('/download-allowlist/'),
+        create: (payload: { cidr: string; label?: string }) =>
+            request<ApiAllowlistEntry>('/download-allowlist/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        update: (id: number, payload: { cidr?: string; label?: string; enabled?: boolean }) =>
+            request<ApiAllowlistEntry>(`/download-allowlist/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
+        delete: (id: number) =>
+            request<void>(`/download-allowlist/${id}`, { method: 'DELETE' }),
     },
     documentTypes: {
         listActive: () =>

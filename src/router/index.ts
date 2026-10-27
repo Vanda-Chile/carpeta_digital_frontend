@@ -7,6 +7,7 @@ import LoginView from '../views/LoginView.vue'
 import SearchView from '../views/SearchView.vue'
 import NuevaCarpetaView from '../views/NuevaCarpetaView.vue'
 import ContactsView from '../views/ContactsView.vue'
+import AllowlistView from '../views/AllowlistView.vue'
 import RevisionsView from '../views/RevisionsView.vue'
 import OrganizationsView from '../views/OrganizationsView.vue'
 import AgencyInfoView from '../views/AgencyInfoView.vue'
@@ -27,6 +28,7 @@ const router = createRouter({
         { path: '/contacts', component: ContactsView },
         { path: '/info-organizacional', component: AgencyInfoView },
         { path: '/organizaciones', component: OrganizationsView, meta: { requiresSystemFlag: true } },
+        { path: '/direcciones-permitidas', component: AllowlistView, meta: { requiresSystemFlag: true } },
     ],
 })
 

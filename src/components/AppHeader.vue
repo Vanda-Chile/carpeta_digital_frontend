@@ -233,7 +233,7 @@ function logout() {
           leave-to-class="opacity-0 scale-95"
         ><div
             v-if="adminMenuOpen"
-            class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100
+            class="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100
                    py-1 origin-top-right"
             role="menu"
           >
@@ -254,6 +254,15 @@ function logout() {
               @click="goTo('/contacts')"
             >
               Contactos Aduana
+            </button>
+            <button
+              v-if="auth.systemFlag"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-indigo-700 font-medium
+                     hover:bg-indigo-50 transition text-left border-t border-gray-100"
+              role="menuitem"
+              @click="goTo('/direcciones-permitidas')"
+            >
+              Direcciones permitidas
             </button>
             <!-- Organizaciones (System Users Only) -->
             <button
