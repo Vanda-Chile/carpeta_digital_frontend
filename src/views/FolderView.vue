@@ -30,6 +30,21 @@ const downloading = ref(false)
 const downloadingFirma = ref(false)
 const togglingState = ref(false)
 const folder = ref<ApiFolder | null>(null)
+const checklistRows = computed(() => {
+  const items = folder.value?.checklist_types ?? []
+  const present = new Set(
+    documents.value
+      .filter(d => d.state !== 'deleted' && d.tipo?.trim())
+      .map(d => d.tipo!.trim().toLowerCase()),
+  )
+  return items.map(item => ({
+    id: item.id,
+    nombre: item.nombre,
+    fulfilled: present.has(item.nombre.trim().toLowerCase()),
+  }))
+})
+const checklistDoneCount = computed(() => checklistRows.value.filter(item => item.fulfilled).length)
+const checklistBlocksSign = computed(() => checklistRows.value.some(item => !item.fulfilled))
 const isClosed = computed(() => folder.value?.state === 'closed')
 const clientLabel = computed(() =>
   folder.value?.client ? `${folder.value.client.rut} — ${folder.value.client.razon_social}` : undefined
@@ -51,7 +66,16 @@ function openClassify(doc: ApiDocument) {
   router.push(`/folder/${encodeURIComponent(folderId.value)}/document/${encodeURIComponent(doc.id)}/classify`)
 }
 
+function openSign() {
+  if (signing.value || !folder.value || checklistBlocksSign.value) return
+  showSign.value = true
+}
+
 async function handleSign() {
+  if (checklistBlocksSign.value) {
+    showSign.value = false
+    return
+  }
   showSign.value = false
   signing.value = true
   try {
@@ -243,10 +267,11 @@ function formatDateTime(iso: string): string {
       <!-- Sign button — hidden once folder is signed/closed -->
       <button
         v-if="folder?.state !== 'closed'"
-        :disabled="signing"
+        :disabled="signing || !folder || checklistBlocksSign"
+        :title="checklistBlocksSign ? 'Completá la checklist antes de firmar' : 'Firmar la carpeta'"
         class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700
-               hover:bg-indigo-100 disabled:opacity-40 transition flex items-center gap-1.5"
-        @click="showSign = true"
+               hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+        @click="openSign"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -265,6 +290,8 @@ function formatDateTime(iso: string): string {
 
     <!-- Content -->
     <main class="max-w-7xl mx-auto px-4 py-4">
+      <div class="flex flex-col lg:flex-row gap-4 items-start">
+      <div class="flex-1 min-w-0 w-full">
       <!-- Loading -->
       <template v-if="store.loading">
         <div class="flex justify-center py-24">
@@ -376,6 +403,57 @@ function formatDateTime(iso: string): string {
           </table>
         </div>
       </template>
+      </div>
+
+      <aside class="w-full lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4">
+        <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h2 class="text-sm font-semibold text-gray-800">Checklist</h2>
+            <span v-if="checklistRows.length" class="text-xs font-medium text-gray-400">
+              {{ checklistDoneCount }} de {{ checklistRows.length }}
+            </span>
+          </div>
+
+          <p v-if="!folder" class="text-xs text-gray-400">Cargando…</p>
+          <p v-else-if="checklistRows.length === 0" class="text-xs text-gray-400 leading-relaxed">
+            Esta carpeta no tiene tipos de documento requeridos.
+          </p>
+          <ul v-else class="space-y-2">
+            <li
+              v-for="item in checklistRows"
+              :key="item.id"
+              class="flex items-start gap-2"
+            >
+              <span
+                class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border"
+                :class="item.fulfilled
+                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  : 'border-gray-300 bg-white text-transparent'"
+                aria-hidden="true"
+              >
+                <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <span
+                class="text-sm leading-5"
+                :class="item.fulfilled ? 'text-gray-700' : 'text-gray-800'"
+              >
+                <span class="sr-only">{{ item.fulfilled ? 'Cumplido: ' : 'Pendiente: ' }}</span>
+                {{ item.nombre }}
+              </span>
+            </li>
+          </ul>
+
+          <p
+            v-if="checklistBlocksSign && folder?.state !== 'closed'"
+            class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800"
+          >
+            Faltan documentos de la checklist. No se puede firmar la carpeta hasta completarlos.
+          </p>
+        </div>
+      </aside>
+      </div>
     </main>
 
     <!-- Modals -->

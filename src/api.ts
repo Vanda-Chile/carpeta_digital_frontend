@@ -88,6 +88,13 @@ export interface ApiFolder {
     document_count: number
     needs_signing?: boolean
     state: string        // 'open' | 'closed'
+    checklist?: string | null
+    checklist_types?: ApiChecklistType[]
+}
+
+export interface ApiChecklistType {
+    id: number
+    nombre: string
 }
 
 export interface ApiPaginatedFolders {
@@ -295,6 +302,7 @@ export const api = {
             agent_id?: string
             numero_aceptacion?: string
             fecha_aceptacion?: string
+            checklist?: string
         }) =>
             request<ApiFolder>('/folders/', {
                 method: 'POST',

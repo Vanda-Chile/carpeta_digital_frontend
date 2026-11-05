@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
-import { api, type ApiClient, type ApiAgent } from '../api'
+import { api, type ApiClient, type ApiAgent, type ApiDocumentType } from '../api'
 
 const router = useRouter()
 
@@ -10,13 +10,56 @@ const router = useRouter()
 const agents = ref<ApiAgent[]>([])
 const selectedAgentId = ref('')
 
+// ── Checklist of required document types ─────────────────────────────────────
+const documentTypes = ref<ApiDocumentType[]>([])
+const checklist = ref<ApiDocumentType[]>([])
+const tipoQuery = ref('')
+const dropdownOpen = ref(false)
+const dropdownRef = ref<HTMLDivElement | null>(null)
+
+const availableTypes = computed(() => {
+  const selected = new Set(checklist.value.map(t => t.id))
+  const q = tipoQuery.value.trim().toLowerCase()
+  return documentTypes.value.filter(t => {
+    if (selected.has(t.id)) return false
+    return !q || t.nombre.toLowerCase().includes(q)
+  })
+})
+
 onMounted(async () => {
   try {
     agents.value = await api.agents.list()
   } catch {
     agents.value = []
   }
+  try {
+    documentTypes.value = await api.documentTypes.listActive()
+  } catch {
+    documentTypes.value = []
+  }
+  document.addEventListener('mousedown', onOutsideClick)
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onOutsideClick)
+})
+
+function onOutsideClick(e: MouseEvent) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target as Node)) {
+    dropdownOpen.value = false
+  }
+}
+
+function addChecklistType(tipo: ApiDocumentType) {
+  if (checklist.value.some(item => item.id === tipo.id)) return
+  checklist.value = [...checklist.value, tipo]
+  tipoQuery.value = ''
+  dropdownOpen.value = false
+}
+
+function removeChecklistType(id: number) {
+  checklist.value = checklist.value.filter(item => item.id !== id)
+}
 
 // ── Dispatch number ───────────────────────────────────────────────────────────
 const despachoInput = ref('')
@@ -124,6 +167,7 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
+    const checklistIds = checklist.value.map(t => t.id).join(',')
     const payload =
       clientMode.value === 'search'
         ? {
@@ -131,6 +175,7 @@ async function submit() {
             operacion: operacion.value,
             client_rut: selectedClient.value!.rut,
             agent_id: selectedAgentId.value || undefined,
+            checklist: checklistIds || undefined,
           }
         : {
             numero_despacho: trimmedDespacho.value,
@@ -138,6 +183,7 @@ async function submit() {
             client_rut: manualRut.value.trim(),
             client_razon_social: manualRazonSocial.value.trim(),
             agent_id: selectedAgentId.value || undefined,
+            checklist: checklistIds || undefined,
           }
     const folder = await api.folders.create(payload)
     router.push(`/folder/${encodeURIComponent(folder.id)}`)
@@ -332,6 +378,69 @@ async function submit() {
                 />
               </div>
             </div>
+          </div>
+
+          <!-- Checklist -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="checklist-tipo">
+              Checklist de documentos
+            </label>
+            <p class="text-xs text-gray-400 mb-2">
+              Agregá los tipos que tienen que estar cargados antes de firmar la carpeta.
+            </p>
+
+            <div ref="dropdownRef" class="relative">
+              <input
+                id="checklist-tipo"
+                v-model="tipoQuery"
+                type="text"
+                placeholder="Buscar tipo de documento…"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900
+                       placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
+                       focus:border-indigo-500 transition"
+                @focus="dropdownOpen = true"
+                @input="dropdownOpen = true"
+              />
+              <ul
+                v-if="dropdownOpen"
+                class="absolute z-20 mt-1 w-full bg-white border border-gray-200
+                       rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <li v-if="documentTypes.length === 0" class="px-3 py-2 text-sm text-gray-400">
+                  No hay tipos configurados.
+                </li>
+                <li v-else-if="availableTypes.length === 0" class="px-3 py-2 text-sm text-gray-400">
+                  Sin resultados.
+                </li>
+                <li v-for="tipo in availableTypes" :key="tipo.id">
+                  <button
+                    type="button"
+                    class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition"
+                    @mousedown.prevent="addChecklistType(tipo)"
+                  >
+                    {{ tipo.nombre }}
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <ul v-if="checklist.length" class="mt-2 space-y-1">
+              <li
+                v-for="tipo in checklist"
+                :key="tipo.id"
+                class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5"
+              >
+                <span class="text-sm text-gray-800">{{ tipo.nombre }}</span>
+                <button
+                  type="button"
+                  class="text-xs text-gray-400 hover:text-red-500 transition"
+                  :aria-label="`Quitar ${tipo.nombre}`"
+                  @click="removeChecklistType(tipo.id)"
+                >
+                  Quitar
+                </button>
+              </li>
+            </ul>
           </div>
 
           <!-- Error -->
