@@ -11,11 +11,49 @@ const agents = ref<ApiAgent[]>([])
 const selectedAgentId = ref('')
 
 // ── Checklist of required document types ─────────────────────────────────────
+// Names must match document_types.nombre. Missing names are skipped.
+const CHECKLIST_DEFAULTS: Record<'importacion' | 'exportacion', string[]> = {
+  importacion: [
+    'FACTURA COMERCIAL',
+    'CONOCIMIENTO DE EMBARQUE (BL)',
+    'MANDATO',
+    'DIN',
+    'DECL. JURADA DEL VALOR Y SUS ELEMENTOS'
+  ],
+  exportacion: [
+    'FACTURA COMERCIAL',
+    'DOCUMENTO TRANSPORTE',
+    'MANDATO',
+    'DUS'
+  ],
+}
+
+const operacion = ref<'importacion' | 'exportacion'>('importacion')
 const documentTypes = ref<ApiDocumentType[]>([])
 const checklist = ref<ApiDocumentType[]>([])
 const tipoQuery = ref('')
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLDivElement | null>(null)
+
+function defaultsFor(kind: 'importacion' | 'exportacion'): ApiDocumentType[] {
+  const byName = new Map(
+    documentTypes.value.map(tipo => [tipo.nombre.trim().toLowerCase(), tipo]),
+  )
+  return CHECKLIST_DEFAULTS[kind].flatMap(name => {
+    const match = byName.get(name.trim().toLowerCase())
+    return match ? [match] : []
+  })
+}
+
+function applyChecklistDefaults() {
+  checklist.value = defaultsFor(operacion.value)
+  tipoQuery.value = ''
+  dropdownOpen.value = false
+}
+
+watch(operacion, () => {
+  applyChecklistDefaults()
+})
 
 const availableTypes = computed(() => {
   const selected = new Set(checklist.value.map(t => t.id))
@@ -37,6 +75,7 @@ onMounted(async () => {
   } catch {
     documentTypes.value = []
   }
+  applyChecklistDefaults()
   document.addEventListener('mousedown', onOutsideClick)
 })
 
@@ -64,9 +103,6 @@ function removeChecklistType(id: number) {
 // ── Dispatch number ───────────────────────────────────────────────────────────
 const despachoInput = ref('')
 const trimmedDespacho = computed(() => despachoInput.value.trim())
-
-// ── Operation type ────────────────────────────────────────────────────────────
-const operacion = ref<'importacion' | 'exportacion'>('importacion')
 
 // ── Client mode ───────────────────────────────────────────────────────────────
 const clientMode = ref<'search' | 'manual'>('search')
@@ -203,7 +239,7 @@ async function submit() {
       <div class="w-full max-w-md">
 
         <p class="text-center text-gray-500 text-sm mb-6">
-          Completá los datos para crear una nueva carpeta de despacho
+          Complete los datos para crear una nueva carpeta de despacho
         </p>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-5">
@@ -342,7 +378,7 @@ async function submit() {
                   v-else-if="searchQuery.trim() && !searching"
                   class="mt-1.5 text-xs text-gray-400"
                 >
-                  Sin resultados. Probá ingresarlo manualmente.
+                  Sin resultados. Pruebe ingresarlo manualmente.
                 </p>
               </div>
             </div>
@@ -383,10 +419,10 @@ async function submit() {
           <!-- Checklist -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1" for="checklist-tipo">
-              Checklist de documentos
+              Documentos requeridos
             </label>
             <p class="text-xs text-gray-400 mb-2">
-              Agregá los tipos que tienen que estar cargados antes de firmar la carpeta.
+              Agregar o quitar antes de crear la carpeta.
             </p>
 
             <div ref="dropdownRef" class="relative">

@@ -458,7 +458,7 @@ function formatDateTime(iso: string): string {
       </template>
       </div>
 
-      <aside class="w-full lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4">
+      <aside class="w-full mt-7 lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4">
         <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
           <div class="flex items-center justify-between gap-2 mb-3">
             <h2 class="text-sm font-semibold text-gray-800">Checklist</h2>
