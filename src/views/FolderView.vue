@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFolderStore } from '../stores/folderStore'
 import AppHeader from '../components/AppHeader.vue'
@@ -9,7 +9,7 @@ import BitacoraModal from '../components/BitacoraModal.vue'
 import FolderDetailModal from '../components/FolderDetailModal.vue'
 import SendMailModal from '../components/SendMailModal.vue'
 import SendAduanaModal from '../components/SendAduanaModal.vue'
-import { api, type ApiFolder, type ApiDocument } from '../api'
+import { api, type ApiFolder, type ApiDocument, type ApiDocumentType } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,13 +46,66 @@ const checklistRows = computed(() => {
 const checklistDoneCount = computed(() => checklistRows.value.filter(item => item.fulfilled).length)
 const checklistBlocksSign = computed(() => checklistRows.value.some(item => !item.fulfilled))
 const isClosed = computed(() => folder.value?.state === 'closed')
+
+const documentTypes = ref<ApiDocumentType[]>([])
+const tipoQuery = ref('')
+const dropdownOpen = ref(false)
+const dropdownRef = ref<HTMLDivElement | null>(null)
+const checklistSaving = ref(false)
+const checklistError = ref('')
+
+const availableTypes = computed(() => {
+  const selected = new Set(checklistRows.value.map(item => item.id))
+  const q = tipoQuery.value.trim().toLowerCase()
+  return documentTypes.value.filter(tipo => {
+    if (selected.has(tipo.id)) return false
+    return !q || tipo.nombre.toLowerCase().includes(q)
+  })
+})
 const clientLabel = computed(() =>
   folder.value?.client ? `${folder.value.client.rut} — ${folder.value.client.razon_social}` : undefined
 )
 
 onMounted(async () => {
   store.fetchDocuments(folderId.value)
-  try { folder.value = await api.folders.get(folderId.value) } catch { /* ignore */ }})
+  try { folder.value = await api.folders.get(folderId.value) } catch { /* ignore */ }
+  try { documentTypes.value = await api.documentTypes.listActive() } catch { documentTypes.value = [] }
+  document.addEventListener('mousedown', onChecklistOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onChecklistOutsideClick)
+})
+
+function onChecklistOutsideClick(e: MouseEvent) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target as Node)) {
+    dropdownOpen.value = false
+  }
+}
+
+async function saveChecklist(ids: number[]) {
+  if (!folder.value || isClosed.value || checklistSaving.value) return
+  checklistSaving.value = true
+  checklistError.value = ''
+  try {
+    folder.value = await api.folders.updateChecklist(folderId.value, ids.join(','))
+  } catch (e: unknown) {
+    checklistError.value = e instanceof Error ? e.message : 'No se pudo actualizar la checklist.'
+  } finally {
+    checklistSaving.value = false
+  }
+}
+
+function addChecklistType(tipo: ApiDocumentType) {
+  if (checklistRows.value.some(item => item.id === tipo.id)) return
+  tipoQuery.value = ''
+  dropdownOpen.value = false
+  saveChecklist([...checklistRows.value.map(item => item.id), tipo.id])
+}
+
+function removeChecklistType(id: number) {
+  saveChecklist(checklistRows.value.filter(item => item.id !== id).map(item => item.id))
+}
 
 async function handleDelete(docId: string) {
   try {
@@ -414,6 +467,41 @@ function formatDateTime(iso: string): string {
             </span>
           </div>
 
+          <div v-if="folder && !isClosed" ref="dropdownRef" class="relative mb-3">
+            <input
+              v-model="tipoQuery"
+              type="text"
+              :disabled="checklistSaving"
+              placeholder="Agregar tipo…"
+              class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900
+                     placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
+                     focus:border-indigo-500 disabled:opacity-50 transition"
+              @focus="dropdownOpen = true"
+              @input="dropdownOpen = true"
+            />
+            <ul
+              v-if="dropdownOpen"
+              class="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200
+                     bg-white shadow-lg"
+            >
+              <li v-if="documentTypes.length === 0" class="px-3 py-2 text-xs text-gray-400">
+                No hay tipos configurados.
+              </li>
+              <li v-else-if="availableTypes.length === 0" class="px-3 py-2 text-xs text-gray-400">
+                Sin resultados.
+              </li>
+              <li v-for="tipo in availableTypes" :key="tipo.id">
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 transition"
+                  @mousedown.prevent="addChecklistType(tipo)"
+                >
+                  {{ tipo.nombre }}
+                </button>
+              </li>
+            </ul>
+          </div>
+
           <p v-if="!folder" class="text-xs text-gray-400">Cargando…</p>
           <p v-else-if="checklistRows.length === 0" class="text-xs text-gray-400 leading-relaxed">
             Esta carpeta no tiene tipos de documento requeridos.
@@ -436,14 +524,26 @@ function formatDateTime(iso: string): string {
                 </svg>
               </span>
               <span
-                class="text-sm leading-5"
+                class="min-w-0 flex-1 text-sm leading-5"
                 :class="item.fulfilled ? 'text-gray-700' : 'text-gray-800'"
               >
                 <span class="sr-only">{{ item.fulfilled ? 'Cumplido: ' : 'Pendiente: ' }}</span>
                 {{ item.nombre }}
               </span>
+              <button
+                v-if="!isClosed"
+                type="button"
+                class="shrink-0 text-xs text-gray-400 hover:text-red-500 disabled:opacity-40 transition"
+                :disabled="checklistSaving"
+                :aria-label="`Quitar ${item.nombre}`"
+                @click="removeChecklistType(item.id)"
+              >
+                Quitar
+              </button>
             </li>
           </ul>
+
+          <p v-if="checklistError" class="mt-3 text-xs text-red-600">{{ checklistError }}</p>
 
           <p
             v-if="checklistBlocksSign && folder?.state !== 'closed'"

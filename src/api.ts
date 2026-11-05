@@ -317,6 +317,12 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ state }),
             }),
+        updateChecklist: (uuid: string, checklist: string) =>
+            request<ApiFolder>(`/folders/${uuid}/checklist`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ checklist }),
+            }),
         sign: (uuid: string) =>
             request<void>(`/folders/${uuid}/sign`, { method: 'POST' }),
         downloadZip: async (uuid: string, filename: string) => {
