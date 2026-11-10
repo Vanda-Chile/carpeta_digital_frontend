@@ -193,7 +193,7 @@ function switchMode(mode: 'search' | 'manual') {
 
 // ── Submit ────────────────────────────────────────────────────────────────────
 const canSubmit = computed(() => {
-  if (!trimmedDespacho.value) return false
+  if (!trimmedDespacho.value || !selectedAgentId.value) return false
   if (clientMode.value === 'search') return selectedClient.value !== null
   return manualRut.value.trim() !== '' && manualRazonSocial.value.trim() !== '' && validateRut(manualRut.value)
 })
@@ -210,7 +210,7 @@ async function submit() {
             numero_despacho: trimmedDespacho.value,
             operacion: operacion.value,
             client_rut: selectedClient.value!.rut,
-            agent_id: selectedAgentId.value || undefined,
+            agent_id: selectedAgentId.value,
             checklist: checklistIds || undefined,
           }
         : {
@@ -218,7 +218,7 @@ async function submit() {
             operacion: operacion.value,
             client_rut: manualRut.value.trim(),
             client_razon_social: manualRazonSocial.value.trim(),
-            agent_id: selectedAgentId.value || undefined,
+            agent_id: selectedAgentId.value,
             checklist: checklistIds || undefined,
           }
     const folder = await api.folders.create(payload)
@@ -285,10 +285,11 @@ async function submit() {
             <select
               id="agent"
               v-model="selectedAgentId"
+              required
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900
                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
             >
-              <option value="">-- Sin agente asignado --</option>
+              <option value="" disabled>Seleccioná un agente</option>
               <option v-for="agent in agents" :key="agent.id" :value="agent.id">
                 {{ agent.name }} {{ agent.code ? `(${agent.code})` : '' }}
               </option>

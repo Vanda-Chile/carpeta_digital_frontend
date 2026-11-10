@@ -429,6 +429,7 @@ function openFolder(uuid: string) {
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Operación</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">RUT</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Agente</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Creado Por</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Docs</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
@@ -467,6 +468,13 @@ function openFolder(uuid: string) {
                 </td>
                 <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ f.client?.rut ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-600">{{ f.client?.razon_social ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                  <template v-if="f.agent">
+                    {{ f.agent.name }}
+                    <span v-if="f.agent.code" class="text-gray-400">({{ f.agent.code }})</span>
+                  </template>
+                  <template v-else>—</template>
+                </td>
                 <td class="px-4 py-3 text-gray-600 text-xs whitespace-nowrap font-medium">{{ f.user_name || f.user_id || '—' }}</td>
                 <td class="px-4 py-3 text-center">
                   <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-700
