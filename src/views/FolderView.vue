@@ -18,6 +18,12 @@ const store = useFolderStore()
 const folderId = computed(() => decodeURIComponent(route.params.id as string))
 const documents = computed(() => store.getDocuments(folderId.value))
 const pendingCount = computed(() => documents.value.filter(d => d.state === 'pending').length)
+const hasUploadedDocuments = computed(() => documents.value.some(d => d.state !== 'deleted'))
+const downloadBlockedReason = computed(() =>
+  !store.loading && !hasUploadedDocuments.value
+    ? 'Sube al menos un documento para descargar la carpeta'
+    : ''
+)
 
 const showUpload = ref(false)
 const showSign = ref(false)
@@ -34,7 +40,7 @@ const checklistRows = computed(() => {
   const items = folder.value?.checklist_types ?? []
   const present = new Set(
     documents.value
-      .filter(d => d.state !== 'deleted' && d.tipo?.trim())
+      .filter(d => d.state !== 'deleted' && d.state !== 'rejected' && d.tipo?.trim())
       .map(d => d.tipo!.trim().toLowerCase()),
   )
   return items.map(item => ({
@@ -107,9 +113,11 @@ function removeChecklistType(id: number) {
   saveChecklist(checklistRows.value.filter(item => item.id !== id).map(item => item.id))
 }
 
-async function handleDelete(docId: string) {
+async function handleDelete(doc: ApiDocument) {
+  const label = doc.tipo?.trim() || `serie ${doc.serie}`
+  if (!confirm(`¿Estás seguro de eliminar el documento "${label}"?`)) return
   try {
-    await store.deleteDocument(folderId.value, docId)
+    await store.deleteDocument(folderId.value, doc.id)
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : 'No se pudo eliminar el documento.')
   }
@@ -143,6 +151,7 @@ async function handleSign() {
 }
 
 async function handleDownload() {
+  if (downloading.value || !hasUploadedDocuments.value) return
   downloading.value = true
   try {
     const name = folder.value?.numero_despacho ?? folderId.value
@@ -155,6 +164,7 @@ async function handleDownload() {
 }
 
 async function handleDownloadFirma() {
+  if (downloadingFirma.value || !hasUploadedDocuments.value) return
   downloadingFirma.value = true
   try {
     const name = folder.value?.numero_despacho ?? folderId.value
@@ -294,9 +304,10 @@ function formatDateTime(iso: string): string {
         {{ folder.state === 'open' ? 'Abierta' : 'Cerrada' }}
       </button>
       <button
-        :disabled="downloading"
+        :disabled="downloading || store.loading || !hasUploadedDocuments"
+        :title="downloadBlockedReason || 'Descargar'"
         class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700
-               hover:bg-gray-50 disabled:opacity-40 transition flex items-center gap-1.5"
+               hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
         @click="handleDownload"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -307,9 +318,10 @@ function formatDateTime(iso: string): string {
       <!-- Download signed XMLs — shown only when folder is already signed/closed -->
       <button
         v-if="folder?.state === 'closed'"
-        :disabled="downloadingFirma"
+        :disabled="downloadingFirma || store.loading || !hasUploadedDocuments"
+        :title="downloadBlockedReason || 'Descargar Carpeta'"
         class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700
-               hover:bg-emerald-100 disabled:opacity-40 transition flex items-center gap-1.5"
+               hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
         @click="handleDownloadFirma"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -446,7 +458,7 @@ function formatDateTime(iso: string): string {
                   <button
                     v-if="!isClosed && doc.state !== 'deleted'"
                     class="text-xs font-medium text-red-500 hover:text-red-700 transition cursor-pointer"
-                    @click="handleDelete(doc.id)"
+                    @click="handleDelete(doc)"
                   >
                     Eliminar
                   </button>

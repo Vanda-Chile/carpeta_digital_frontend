@@ -60,6 +60,17 @@ export const useFolderStore = defineStore('folder', () => {
         return documentCache.value[folderId] ?? []
     }
 
+    function takenDocumentTypes(folderId: string, excludeDocId?: string): Set<string> {
+        const taken = new Set<string>()
+        for (const doc of documentCache.value[folderId] ?? []) {
+            if (excludeDocId && doc.id === excludeDocId) continue
+            if (doc.state === 'deleted' || doc.state === 'rejected') continue
+            const tipo = doc.tipo?.trim().toLowerCase()
+            if (tipo) taken.add(tipo)
+        }
+        return taken
+    }
+
     function addToCache(folderId: string, doc: FolderDocument) {
         if (!documentCache.value[folderId]) documentCache.value[folderId] = []
         documentCache.value[folderId].unshift(doc)
@@ -109,6 +120,6 @@ export const useFolderStore = defineStore('folder', () => {
 
     return {
         recentFolders, pagination, documentCache, loading, error,
-        fetchFolders, fetchDocuments, getDocuments, addToCache, deleteDocument, setDocumentState, updateDocumentType, signFolder, setFolderState,
+        fetchFolders, fetchDocuments, getDocuments, takenDocumentTypes, addToCache, deleteDocument, setDocumentState, updateDocumentType, signFolder, setFolderState,
     }
 })

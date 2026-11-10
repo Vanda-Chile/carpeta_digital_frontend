@@ -36,6 +36,12 @@ const iframeUrl = ref('')
 const iframeLoading = ref(true)
 const iframeError = ref(false)
 
+const takenTypes = computed(() => store.takenDocumentTypes(folderId.value, docId.value))
+
+function isTypeTaken(nombre: string): boolean {
+  return takenTypes.value.has(nombre.trim().toLowerCase())
+}
+
 const filteredTipos = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return allTipos.value
@@ -95,7 +101,7 @@ onMounted(async () => {
 })
 
 function selectTipo(tipoName: string) {
-  if (isClosed.value) return
+  if (isClosed.value || isTypeTaken(tipoName)) return
   selectedTipo.value = tipoName
   errorMessage.value = ''
 }
@@ -107,6 +113,10 @@ async function handleSave() {
   }
   if (isClosed.value) {
     errorMessage.value = 'La carpeta está cerrada y no permite modificaciones.'
+    return
+  }
+  if (isTypeTaken(selectedTipo.value)) {
+    errorMessage.value = 'Ya existe un documento de este tipo en la carpeta.'
     return
   }
 
@@ -314,16 +324,25 @@ function formatSize(bytes?: number): string {
                   v-for="t in filteredTipos"
                   :key="t.id"
                   type="button"
-                  :disabled="isClosed"
+                  :disabled="isClosed || isTypeTaken(t.nombre)"
                   @click="selectTipo(t.nombre)"
-                  :class="selectedTipo.toLowerCase() === t.nombre.toLowerCase()
-                    ? 'bg-indigo-600 text-white font-semibold shadow-xs'
-                    : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 font-medium'"
-                  class="w-full text-left px-3.5 py-2.5 rounded-lg text-xs transition flex items-center justify-between gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  :class="[
+                    isClosed ? 'opacity-50' : '',
+                    isTypeTaken(t.nombre)
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : selectedTipo.toLowerCase() === t.nombre.toLowerCase()
+                        ? 'bg-indigo-600 text-white font-semibold shadow-xs'
+                        : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 font-medium cursor-pointer',
+                  ]"
+                  class="w-full text-left px-3.5 py-2.5 rounded-lg text-xs transition flex items-center justify-between gap-2 disabled:cursor-not-allowed"
                 >
                   <span class="truncate">{{ t.nombre }}</span>
+                  <span
+                    v-if="isTypeTaken(t.nombre)"
+                    class="shrink-0 text-[10px] font-semibold uppercase tracking-wide"
+                  >Ya existe</span>
                   <svg
-                    v-if="selectedTipo.toLowerCase() === t.nombre.toLowerCase()"
+                    v-else-if="selectedTipo.toLowerCase() === t.nombre.toLowerCase()"
                     class="w-4 h-4 text-white shrink-0"
                     fill="none"
                     stroke="currentColor"

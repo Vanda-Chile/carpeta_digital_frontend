@@ -15,6 +15,13 @@ const docId = computed(() => decodeURIComponent(route.params.docId as string))
 const documents = computed(() => store.getDocuments(folderId.value))
 const currentIndex = computed(() => documents.value.findIndex(d => d.id === docId.value))
 const doc = computed(() => documents.value[currentIndex.value] ?? null)
+const acceptBlockedByType = computed(() => {
+  const current = doc.value
+  if (!current?.tipo) return false
+  if (current.state !== 'rejected' && current.state !== 'deleted') return false
+  return store.takenDocumentTypes(folderId.value, docId.value)
+    .has(current.tipo.trim().toLowerCase())
+})
 
 const prevDoc = computed(() => currentIndex.value > 0 ? documents.value[currentIndex.value - 1] : null)
 const nextDoc = computed(() => currentIndex.value < documents.value.length - 1 ? documents.value[currentIndex.value + 1] : null)
@@ -85,6 +92,10 @@ async function handleSaveObservation() {
 
 async function setState(newState: string) {
   if (stateLoading.value) return
+  if (newState !== 'rejected' && newState !== 'deleted' && acceptBlockedByType.value) {
+    alert('Ya existe un documento de este tipo en la carpeta.')
+    return
+  }
   stateLoading.value = true
   try {
     await store.setDocumentState(folderId.value, docId.value, newState)
@@ -143,7 +154,8 @@ function formatSize(bytes: number): string {
       <!-- Accept / Reject action bar -->
       <div v-if="doc" class="flex items-center gap-3">
         <button
-          :disabled="stateLoading || doc.state === 'accepted'"
+          :disabled="stateLoading || doc.state === 'accepted' || acceptBlockedByType"
+          :title="acceptBlockedByType ? 'Ya existe un documento de este tipo en la carpeta.' : 'Aceptar'"
           class="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white
                  hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
           @click="setState('accepted')"

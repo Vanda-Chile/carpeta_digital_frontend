@@ -21,6 +21,16 @@ const tipoSelected = ref<ApiDocumentType | null>(null)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLDivElement | null>(null)
 
+const takenTypes = computed(() => store.takenDocumentTypes(props.folderId))
+
+function isTypeTaken(nombre: string): boolean {
+  return takenTypes.value.has(nombre.trim().toLowerCase())
+}
+
+const selectedTypeTaken = computed(() =>
+  tipoSelected.value ? isTypeTaken(tipoSelected.value.nombre) : false,
+)
+
 const filteredTipos = computed(() => {
   const q = tipoQuery.value.toLowerCase()
   return q
@@ -46,9 +56,11 @@ function onOutsideClick(e: MouseEvent) {
 }
 
 function selectTipo(t: ApiDocumentType) {
+  if (isTypeTaken(t.nombre)) return
   tipoSelected.value = t
   tipoQuery.value = ''
   dropdownOpen.value = false
+  errorMsg.value = ''
 }
 
 function clearTipo() {
@@ -70,7 +82,7 @@ function onFileChange(e: Event) {
 }
 
 async function upload() {
-  if (!selectedFile.value) return
+  if (!selectedFile.value || selectedTypeTaken.value) return
 
   isProcessing.value = true
   errorMsg.value = ''
@@ -225,15 +237,24 @@ async function upload() {
             v-for="t in filteredTipos"
             :key="t.id"
             type="button"
-            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50
-                   hover:text-indigo-700 transition"
-            :class="tipoSelected?.id === t.id ? 'bg-indigo-50 text-indigo-700 font-medium' : ''"
+            :disabled="isTypeTaken(t.nombre)"
+            class="w-full text-left px-4 py-2.5 text-sm transition flex items-center justify-between gap-2
+                   disabled:cursor-not-allowed"
+            :class="isTypeTaken(t.nombre)
+              ? 'text-gray-400'
+              : tipoSelected?.id === t.id
+                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'"
             @mousedown.prevent="selectTipo(t)"
           >
-            {{ t.nombre }}
+            <span class="truncate">{{ t.nombre }}</span>
+            <span v-if="isTypeTaken(t.nombre)" class="shrink-0 text-xs font-medium">Ya existe</span>
           </button>
         </div>
       </div>
+      <p v-if="selectedTypeTaken" class="mt-2 text-xs text-red-600">
+        Ya existe un documento de este tipo en la carpeta.
+      </p>
 
       <!-- Observacion field -->
       <div class="mt-4">
@@ -267,7 +288,7 @@ async function upload() {
           Cancelar
         </button>
         <button
-          :disabled="!selectedFile || isProcessing"
+          :disabled="!selectedFile || isProcessing || selectedTypeTaken"
           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                  hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500
                  disabled:opacity-40 disabled:cursor-not-allowed"
