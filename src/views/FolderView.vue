@@ -21,7 +21,7 @@ const pendingCount = computed(() => documents.value.filter(d => d.state === 'pen
 const hasUploadedDocuments = computed(() => documents.value.some(d => d.state !== 'deleted'))
 const downloadBlockedReason = computed(() =>
   !store.loading && !hasUploadedDocuments.value
-    ? 'Sube al menos un documento para descargar la carpeta'
+    ? 'Suba al menos un documento para descargar la carpeta'
     : ''
 )
 
@@ -96,7 +96,7 @@ async function saveChecklist(ids: number[]) {
   try {
     folder.value = await api.folders.updateChecklist(folderId.value, ids.join(','))
   } catch (e: unknown) {
-    checklistError.value = e instanceof Error ? e.message : 'No se pudo actualizar la checklist.'
+    checklistError.value = e instanceof Error ? e.message : 'No se pudo actualizar la lista de documentos requeridos.'
   } finally {
     checklistSaving.value = false
   }
@@ -386,7 +386,7 @@ function formatDateTime(iso: string): string {
             </svg>
           </div>
           <p class="text-sm font-medium text-gray-500">Aún no hay documentos</p>
-          <p class="text-xs text-gray-400 mt-1">Subí un archivo para comenzar</p>
+          <p class="text-xs text-gray-400 mt-1">Suba un archivo para comenzar</p>
           <button
             v-if="!isClosed"
             class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
@@ -497,7 +497,7 @@ function formatDateTime(iso: string): string {
                      bg-white shadow-lg"
             >
               <li v-if="documentTypes.length === 0" class="px-3 py-2 text-xs text-gray-400">
-                No hay tipos configurados.
+                No hay tipos de documento configurados.
               </li>
               <li v-else-if="availableTypes.length === 0" class="px-3 py-2 text-xs text-gray-400">
                 Sin resultados.
@@ -516,7 +516,7 @@ function formatDateTime(iso: string): string {
 
           <p v-if="!folder" class="text-xs text-gray-400">Cargando…</p>
           <p v-else-if="checklistRows.length === 0" class="text-xs text-gray-400 leading-relaxed">
-            Esta carpeta no tiene tipos de documento requeridos.
+            Esta carpeta no tiene documentos requeridos.
           </p>
           <ul v-else class="space-y-2">
             <li
@@ -561,7 +561,7 @@ function formatDateTime(iso: string): string {
             v-if="checklistBlocksSign && folder?.state !== 'closed'"
             class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800"
           >
-            Faltan documentos de la checklist. No se puede firmar la carpeta hasta completarlos.
+            Faltan documentos de la lista de documentos requeridos. No se puede firmar la carpeta hasta completarlos.
           </p>
         </div>
       </aside>
