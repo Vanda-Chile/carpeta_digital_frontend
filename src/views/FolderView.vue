@@ -52,6 +52,8 @@ const checklistRows = computed(() => {
 const checklistDoneCount = computed(() => checklistRows.value.filter(item => item.fulfilled).length)
 const checklistBlocksSign = computed(() => checklistRows.value.some(item => !item.fulfilled))
 const isClosed = computed(() => folder.value?.state === 'closed')
+const folderIsSigned = computed(() => documents.value.some(d => d.state === 'signed'))
+const documentsLocked = computed(() => isClosed.value || folderIsSigned.value)
 
 const documentTypes = ref<ApiDocumentType[]>([])
 const tipoQuery = ref('')
@@ -90,7 +92,7 @@ function onChecklistOutsideClick(e: MouseEvent) {
 }
 
 async function saveChecklist(ids: number[]) {
-  if (!folder.value || isClosed.value || checklistSaving.value) return
+  if (!folder.value || documentsLocked.value || checklistSaving.value) return
   checklistSaving.value = true
   checklistError.value = ''
   try {
@@ -177,7 +179,7 @@ async function handleDownloadFirma() {
 }
 
 async function toggleFolderState() {
-  if (!folder.value || togglingState.value) return
+  if (!folder.value || togglingState.value || (folderIsSigned.value && folder.value.state === 'closed')) return
   togglingState.value = true
   try {
     const newState = folder.value.state === 'open' ? 'closed' : 'open'
@@ -218,7 +220,7 @@ function formatDateTime(iso: string): string {
       :subtitle="folder?.numero_despacho ?? folderId"
       :subtitle2="clientLabel"
       @back="router.push('/')"
-      @upload="() => { if (!isClosed) showUpload = true }"
+      @upload="() => { if (!documentsLocked) showUpload = true }"
     />
 
     <!-- Closure date banner -->
@@ -290,7 +292,8 @@ function formatDateTime(iso: string): string {
       <!-- Folder state toggle -->
       <button
         v-if="folder"
-        :disabled="togglingState"
+        :disabled="togglingState || (folderIsSigned && folder.state === 'closed')"
+        :title="folderIsSigned && folder.state === 'closed' ? 'La carpeta está firmada y no se puede volver a abrir' : ''"
         :class="folder.state === 'open'
           ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
           : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'"
@@ -344,7 +347,7 @@ function formatDateTime(iso: string): string {
         {{ signing ? 'Firmando…' : 'Firmar' }}
       </button>
       <button
-        v-if="!isClosed"
+        v-if="!documentsLocked"
         class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white
                hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
         @click="showUpload = true"
@@ -388,7 +391,7 @@ function formatDateTime(iso: string): string {
           <p class="text-sm font-medium text-gray-500">Aún no hay documentos</p>
           <p class="text-xs text-gray-400 mt-1">Suba un archivo para comenzar</p>
           <button
-            v-if="!isClosed"
+            v-if="!documentsLocked"
             class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                    hover:bg-indigo-700 transition"
             @click="showUpload = true"
@@ -449,14 +452,14 @@ function formatDateTime(iso: string): string {
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ doc.signed_at ? formatDateTime(doc.signed_at) : '—' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap space-x-2">
                   <button
-                    v-if="!isClosed && doc.state !== 'deleted'"
+                    v-if="!documentsLocked && doc.state !== 'deleted'"
                     class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
                     @click="openClassify(doc)"
                   >
                     Clasificar
                   </button>
                   <button
-                    v-if="!isClosed && doc.state !== 'deleted'"
+                    v-if="!documentsLocked && doc.state !== 'deleted'"
                     class="text-xs font-medium text-red-500 hover:text-red-700 transition cursor-pointer"
                     @click="handleDelete(doc)"
                   >
@@ -479,7 +482,7 @@ function formatDateTime(iso: string): string {
             </span>
           </div>
 
-          <div v-if="folder && !isClosed" ref="dropdownRef" class="relative mb-3">
+          <div v-if="folder && !documentsLocked" ref="dropdownRef" class="relative mb-3">
             <input
               v-model="tipoQuery"
               type="text"
@@ -543,7 +546,7 @@ function formatDateTime(iso: string): string {
                 {{ item.nombre }}
               </span>
               <button
-                v-if="!isClosed"
+                v-if="!documentsLocked"
                 type="button"
                 class="shrink-0 text-xs text-gray-400 hover:text-red-500 disabled:opacity-40 transition"
                 :disabled="checklistSaving"

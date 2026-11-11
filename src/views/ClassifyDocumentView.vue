@@ -18,7 +18,7 @@ const doc = computed<ApiDocument | null>(() => {
   return documents.value.find(d => d.id === docId.value) ?? null
 })
 
-const isClosed = computed(() => folder.value?.state === 'closed')
+const isClosed = computed(() => folder.value?.state === 'closed' || documents.value.some(d => d.state === 'signed'))
 
 // Types state
 const allTipos = ref<ApiDocumentType[]>([])

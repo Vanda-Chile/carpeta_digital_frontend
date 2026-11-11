@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFolderStore } from '../stores/folderStore'
 import AppHeader from '../components/AppHeader.vue'
-import { api, type ApiObservation } from '../api'
+import { api, type ApiFolder, type ApiObservation } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +13,8 @@ const folderId = computed(() => decodeURIComponent(route.params.id as string))
 const docId = computed(() => decodeURIComponent(route.params.docId as string))
 
 const documents = computed(() => store.getDocuments(folderId.value))
+const folder = ref<ApiFolder | null>(null)
+const isClosed = computed(() => folder.value?.state === 'closed' || documents.value.some(d => d.state === 'signed'))
 const currentIndex = computed(() => documents.value.findIndex(d => d.id === docId.value))
 const doc = computed(() => documents.value[currentIndex.value] ?? null)
 const acceptBlockedByType = computed(() => {
@@ -71,6 +73,7 @@ async function fetchObservations() {
 }
 
 async function handleSaveObservation() {
+  if (isClosed.value) return
   obsError.value = ''
   const text = obsText.value.trim()
   if (!text) {
@@ -91,7 +94,7 @@ async function handleSaveObservation() {
 }
 
 async function setState(newState: string) {
-  if (stateLoading.value) return
+  if (stateLoading.value || isClosed.value) return
   if (newState !== 'rejected' && newState !== 'deleted' && acceptBlockedByType.value) {
     alert('Ya existe un documento de este tipo en la carpeta.')
     return
@@ -116,6 +119,7 @@ onMounted(async () => {
   if (store.getDocuments(folderId.value).length === 0) {
     await store.fetchDocuments(folderId.value)
   }
+  try { folder.value = await api.folders.get(folderId.value) } catch { /* ignore */ }
   loadDocumentUrl()
   fetchObservations()
 })
@@ -153,6 +157,7 @@ function formatSize(bytes: number): string {
 
       <!-- Accept / Reject action bar -->
       <div v-if="doc" class="flex items-center gap-3">
+        <template v-if="!isClosed">
         <button
           :disabled="stateLoading || doc.state === 'accepted' || acceptBlockedByType"
           :title="acceptBlockedByType ? 'Ya existe un documento de este tipo en la carpeta.' : 'Aceptar'"
@@ -202,6 +207,7 @@ function formatSize(bytes: number): string {
           </svg>
           Clasificar
         </router-link>
+        </template>
         <span
           v-if="doc.state === 'accepted' || doc.state === 'rejected'"
           :class="doc.state === 'accepted' ? 'text-green-600' : 'text-red-600'"
