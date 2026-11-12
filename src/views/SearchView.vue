@@ -20,7 +20,7 @@ const filterCliente = ref('')
 const filterUser = ref('')
 const filterDesde = ref('')
 const filterHasta = ref('')
-const filterState = ref('open')
+const filterState = ref('')
 const filterOperacion = ref('')
 const filterDocs = ref('')
 const filterNeedsSigning = ref('')
@@ -40,7 +40,7 @@ function applyFilters(page = 1) {
   if (filterCliente.value.trim()) query.client = filterCliente.value.trim()
   if (filterAgent.value) query.agent_id = filterAgent.value
   if (filterUser.value.trim()) query.creating_user = filterUser.value.trim()
-  if (filterState.value && filterState.value !== 'open') query.state = filterState.value
+  if (filterState.value) query.state = filterState.value
   if (filterOperacion.value) query.operacion = filterOperacion.value
   if (filterDocs.value) query.has_documents = filterDocs.value
   if (filterNeedsSigning.value) query.needs_signing = filterNeedsSigning.value
@@ -77,7 +77,7 @@ function clearFilters() {
   filterUser.value = ''
   filterDesde.value = ''
   filterHasta.value = ''
-  filterState.value = 'open'
+  filterState.value = ''
   filterOperacion.value = ''
   filterDocs.value = ''
   filterNeedsSigning.value = ''
@@ -125,7 +125,7 @@ const hasFilters = computed(() =>
   filterUser.value ||
   filterDesde.value ||
   filterHasta.value ||
-  filterState.value !== 'open' ||
+  filterState.value !== '' ||
   filterOperacion.value !== '' ||
   filterDocs.value !== '' ||
   filterNeedsSigning.value !== '' ||

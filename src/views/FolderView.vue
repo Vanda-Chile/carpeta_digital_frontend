@@ -219,7 +219,7 @@ function formatDateTime(iso: string): string {
       show-back
       :subtitle="folder?.numero_despacho ?? folderId"
       :subtitle2="clientLabel"
-      @back="router.push('/')"
+      @back="router.push('/buscar')"
       @upload="() => { if (!documentsLocked) showUpload = true }"
     />
 
