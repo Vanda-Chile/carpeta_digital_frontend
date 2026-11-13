@@ -172,7 +172,7 @@ function openFolder(uuid: string) {
   <div class="min-h-screen bg-gray-50 flex flex-col">
     <AppHeader show-back @back="router.push('/')" />
 
-    <main class="max-w-7xl mx-auto w-full px-4 py-8">
+    <main class="mx-8 w-full px-4 py-8">
 
       <h1 class="text-xl font-bold text-gray-900 mb-6">Buscar Carpeta</h1>
 
@@ -410,7 +410,25 @@ function openFolder(uuid: string) {
                     </span>
                   </div>
                 </th>
-
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Docs</th>
+                <!-- Sortable Creación header -->
+                <th
+                  class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 cursor-pointer hover:text-indigo-600 transition select-none"
+                  @click="toggleSort('created_at')"
+                >
+                  <div class="flex items-center space-x-1">
+                    <span>Creación</span>
+                    <span v-if="sortBy === 'created_at'" class="text-indigo-600 font-bold">
+                      {{ sortOrder === 'desc' ? '↓' : '↑' }}
+                    </span>
+                  </div>
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Creado Por</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Operación</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">RUT</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Agente</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">N° Aceptación</th>
 
                 <!-- Sortable Fecha Aceptación header -->
@@ -421,27 +439,6 @@ function openFolder(uuid: string) {
                   <div class="flex items-center space-x-1">
                     <span>F. Aceptación</span>
                     <span v-if="sortBy === 'fecha_aceptacion'" class="text-indigo-600 font-bold">
-                      {{ sortOrder === 'desc' ? '↓' : '↑' }}
-                    </span>
-                  </div>
-                </th>
-
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Operación</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">RUT</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Agente</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Creado Por</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Docs</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</th>
-
-                <!-- Sortable Creación header -->
-                <th
-                  class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 cursor-pointer hover:text-indigo-600 transition select-none"
-                  @click="toggleSort('created_at')"
-                >
-                  <div class="flex items-center space-x-1">
-                    <span>Creación</span>
-                    <span v-if="sortBy === 'created_at'" class="text-indigo-600 font-bold">
                       {{ sortOrder === 'desc' ? '↓' : '↑' }}
                     </span>
                   </div>
@@ -458,30 +455,6 @@ function openFolder(uuid: string) {
               >
                 <td class="px-4 py-3 font-mono text-xs text-gray-400 whitespace-nowrap">{{ f.id }}</td>
                 <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ f.numero_despacho }}</td>
-                <td class="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{{ f.numero_aceptacion ?? '—' }}</td>
-                <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{{ f.fecha_aceptacion ? formatDate(f.fecha_aceptacion) : '—' }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span
-                    :class="f.operacion === 'exportacion' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'"
-                    class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  >{{ f.operacion === 'exportacion' ? 'Exportación' : 'Importación' }}</span>
-                </td>
-                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ f.client?.rut ?? '—' }}</td>
-                <td class="px-4 py-3 text-gray-600">{{ f.client?.razon_social ?? '—' }}</td>
-                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                  <template v-if="f.agent">
-                    {{ f.agent.name }}
-                    <span v-if="f.agent.code" class="text-gray-400">({{ f.agent.code }})</span>
-                  </template>
-                  <template v-else>—</template>
-                </td>
-                <td class="px-4 py-3 text-gray-600 text-xs whitespace-nowrap font-medium">{{ f.user_name || f.user_id || '—' }}</td>
-                <td class="px-4 py-3 text-center">
-                  <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-700
-                               text-xs font-semibold px-2 py-0.5 min-w-7">
-                    {{ f.document_count }}
-                  </span>
-                </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="flex items-center gap-1.5">
                     <span
@@ -497,7 +470,36 @@ function openFolder(uuid: string) {
                     </span>
                   </div>
                 </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-700
+                               text-xs font-semibold px-2 py-0.5 min-w-7">
+                    {{ f.document_count }}
+                  </span>
+                </td>
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ formatDate(f.created_at) }}</td>
+                <td class="px-4 py-3 text-gray-600 text-xs whitespace-nowrap font-medium">{{ f.user_name || f.user_id || '—' }}</td>
+
+                
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span
+                    :class="f.operacion === 'exportacion' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'"
+                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                  >{{ f.operacion === 'exportacion' ? 'Exportación' : 'Importación' }}</span>
+                </td>
+                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ f.client?.rut ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ f.client?.razon_social ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                  <template v-if="f.agent">
+                    {{ f.agent.name }}
+                    <span v-if="f.agent.code" class="text-gray-400">({{ f.agent.code }})</span>
+                  </template>
+                  <template v-else>—</template>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{{ f.numero_aceptacion ?? '—' }}</td>
+                <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{{ f.fecha_aceptacion ? formatDate(f.fecha_aceptacion) : '—' }}</td>
+                
+                
+                
               </tr>
             </tbody>
           </table>
