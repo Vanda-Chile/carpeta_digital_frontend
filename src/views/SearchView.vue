@@ -172,7 +172,7 @@ function openFolder(uuid: string) {
   <div class="min-h-screen bg-gray-50 flex flex-col">
     <AppHeader show-back @back="router.push('/')" />
 
-    <main class="mx-8 w-full px-4 py-8">
+    <main class="w-full px-8 py-8">
 
       <h1 class="text-xl font-bold text-gray-900 mb-6">Buscar Carpeta</h1>
 
