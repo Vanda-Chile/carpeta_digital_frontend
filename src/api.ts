@@ -148,6 +148,11 @@ export interface ApiDocument {
     signed_at: string | null
 }
 
+export interface ApiUploadedDocument extends ApiDocument {
+    dpi: number | null
+    resolution_warning: string | null
+}
+
 export interface ApiDocumentType {
     id: number
     nombre: string
@@ -387,7 +392,7 @@ export const api = {
             folderUuid: string,
             payload: { filename: string; temp_path: string; mime_type: string; observacion?: string; tipo?: string },
         ) =>
-            request<ApiDocument>(`/folders/${folderUuid}/documents/`, {
+            request<ApiUploadedDocument>(`/folders/${folderUuid}/documents/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

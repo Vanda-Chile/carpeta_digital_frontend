@@ -13,6 +13,7 @@ const selectedFile = ref<File | null>(null)
 const observacion = ref('')
 const isProcessing = ref(false)
 const errorMsg = ref('')
+const resolutionWarning = ref('')
 
 // ── Searchable tipo dropdown ───────────────────────────────────────────────
 const allTipos = ref<ApiDocumentType[]>([])
@@ -68,17 +69,92 @@ function clearTipo() {
   tipoQuery.value = ''
 }
 
-function onFileChange(e: Event) {
+const PDF_ONLY = 'Solo se permiten archivos PDF/A.'
+let fileCheck = 0
+
+function isPdfCandidate(file: File): boolean {
+  const name = file.name
+  if (
+    name !== name.trim()
+    || !name.toLowerCase().endsWith('.pdf')
+    || name.includes('/')
+    || name.includes('\\')
+  ) return false
+  return file.type === '' || file.type === 'application/pdf' || file.type === 'application/octet-stream'
+}
+
+function hasPdfAid(text: string): boolean {
+  return text.includes('http://www.aiim.org/pdfa/ns/id/') || text.includes('pdfaid:part')
+}
+
+async function inflateFlate(bytes: Uint8Array): Promise<string | null> {
+  if (typeof DecompressionStream === 'undefined') return null
+  let data = bytes
+  while (data.length && (data[data.length - 1] === 0x0a || data[data.length - 1] === 0x0d)) {
+    data = data.subarray(0, data.length - 1)
+  }
+  try {
+    const copy = data.slice()
+    const stream = new Blob([copy]).stream().pipeThrough(new DecompressionStream('deflate'))
+    const inflated = new Uint8Array(await new Response(stream).arrayBuffer())
+    return new TextDecoder('latin1').decode(inflated)
+  } catch {
+    return null
+  }
+}
+
+/** Rejects ordinary PDFs before upload. Undecodable metadata is left for the server. */
+async function inspectPdfA(file: File): Promise<'pdfa' | 'not-pdf' | 'not-pdfa' | 'unknown'> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  if (bytes.length < 5) return 'not-pdf'
+  const text = new TextDecoder('latin1').decode(bytes)
+  if (!text.startsWith('%PDF-')) return 'not-pdf'
+  if (hasPdfAid(text)) return 'pdfa'
+
+  const metaRe = /\/Type\s*\/Metadata\b[\s\S]{0,1200}?stream\r?\n/g
+  let undecoded = false
+  let match: RegExpExecArray | null
+  while ((match = metaRe.exec(text)) !== null) {
+    const start = match.index + match[0].length
+    const end = text.indexOf('endstream', start)
+    if (end < 0) {
+      undecoded = true
+      continue
+    }
+    const raw = bytes.subarray(start, end)
+    const chunk = match[0].includes('/FlateDecode')
+      ? await inflateFlate(raw)
+      : new TextDecoder('latin1').decode(raw)
+    if (chunk == null) {
+      undecoded = true
+      continue
+    }
+    if (hasPdfAid(chunk)) return 'pdfa'
+  }
+  return undecoded ? 'unknown' : 'not-pdfa'
+}
+
+async function onFileChange(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0] ?? null
-  if (file && file.type !== 'application/pdf') {
-    errorMsg.value = 'Solo se permiten archivos PDF.'
+  const check = ++fileCheck
+  selectedFile.value = null
+  errorMsg.value = ''
+  resolutionWarning.value = ''
+  if (!file) return
+  if (!isPdfCandidate(file)) {
+    errorMsg.value = PDF_ONLY
     target.value = ''
-    selectedFile.value = null
+    return
+  }
+  const claim = await inspectPdfA(file)
+  if (check !== fileCheck) return
+  if (claim === 'not-pdf' || claim === 'not-pdfa') {
+    errorMsg.value = PDF_ONLY
+    target.value = ''
     return
   }
   selectedFile.value = file
-  if (file) errorMsg.value = ''
 }
 
 async function upload() {
@@ -89,7 +165,7 @@ async function upload() {
 
   try {
     const filename = selectedFile.value.name
-    const mime_type = selectedFile.value.type || 'application/pdf'
+    const mime_type = 'application/pdf'
 
     // 1. Get GCS pre-signed upload URL
     const { upload_url, temp_path } = await api.documents.getUploadUrl(props.folderId, {
@@ -110,6 +186,10 @@ async function upload() {
     })
 
     store.addToCache(props.folderId, doc)
+    if (doc.resolution_warning) {
+      resolutionWarning.value = doc.resolution_warning
+      return
+    }
     emit('close')
   } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : 'No se pudo subir el archivo.'
@@ -149,13 +229,13 @@ async function upload() {
         <input
           ref="fileInput"
           type="file"
-          accept="application/pdf"
+          accept=".pdf,application/pdf"
           class="hidden"
           @change="onFileChange"
         />
         <template v-if="selectedFile">
           <p class="text-sm font-medium text-gray-800 truncate">{{ selectedFile.name }}</p>
-          <p class="text-xs text-gray-400 mt-1">Hacé clic para cambiar el archivo</p>
+          <p class="text-xs text-gray-400 mt-1">Haga click para cambiar el archivo</p>
         </template>
         <template v-else>
           <svg class="mx-auto w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor"
@@ -164,7 +244,8 @@ async function upload() {
               d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021
                  18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
-          <p class="text-sm text-gray-500">Hacé clic para seleccionar un archivo</p>
+          <p class="text-sm text-gray-500">Haga click para seleccionar un archivo</p>
+          <p class="text-xs text-gray-400 mt-1">Solo se acepta el formato PDF/A</p>
         </template>
       </div>
 
@@ -277,6 +358,9 @@ async function upload() {
 
       <!-- Error -->
       <p v-if="errorMsg" class="mt-2 text-xs text-red-600">{{ errorMsg }}</p>
+      <p v-if="resolutionWarning" class="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+        {{ resolutionWarning }}
+      </p>
 
       <!-- Actions -->
       <div class="mt-5 flex gap-2 justify-end">
@@ -285,9 +369,10 @@ async function upload() {
                  transition focus:outline-none"
           @click="emit('close')"
         >
-          Cancelar
+          {{ resolutionWarning ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!resolutionWarning"
           :disabled="!selectedFile || isProcessing || selectedTypeTaken"
           class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                  hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500
