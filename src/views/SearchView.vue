@@ -453,7 +453,7 @@ function openFolder(uuid: string) {
                 class="cursor-pointer hover:bg-indigo-50 transition"
                 @click="openFolder(f.id)"
               >
-                <td class="px-4 py-3 font-mono text-xs text-gray-400 whitespace-nowrap">{{ f.agent.code + '-' + f.numero_despacho}}</td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-400 whitespace-nowrap">{{ f.agent? f.agent.code : '' + '-' + f.numero_despacho}}</td>
                 <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ f.numero_despacho }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="flex items-center gap-1.5">
