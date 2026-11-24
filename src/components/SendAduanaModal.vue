@@ -150,6 +150,7 @@ async function handleSend() {
             class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm text-gray-800 bg-white
                    focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition cursor-pointer"
           >
+            <option :value="2">48 horas</option>
             <option :value="7">1 semana (7 días)</option>
             <option :value="30">1 mes (30 días) — Predeterminado</option>
             <option :value="90">3 meses (90 días)</option>
