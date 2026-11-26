@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
+import { useAuthStore } from '../stores/authStore'
 import { api, type ApiRevision, type ApiObservation, type ApiDocumentType } from '../api'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const revisions = ref<ApiRevision[]>([])
 const documentTypes = ref<ApiDocumentType[]>([])
@@ -425,7 +427,11 @@ onMounted(() => {
         </div>
 
         <!-- Add new observation inline -->
-        <form @submit.prevent="handleAddModalObservation" class="border-t border-gray-100 pt-3 flex flex-col gap-2 shrink-0">
+        <form
+          v-if="!auth.systemFlag"
+          @submit.prevent="handleAddModalObservation"
+          class="border-t border-gray-100 pt-3 flex flex-col gap-2 shrink-0"
+        >
           <label for="new-obs" class="text-xs font-semibold text-gray-700">Agregar nueva observación</label>
           <div class="flex gap-2">
             <textarea

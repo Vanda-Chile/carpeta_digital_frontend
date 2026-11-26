@@ -43,6 +43,9 @@ router.beforeEach((to) => {
     if (to.meta.requiresSystemFlag && !auth.systemFlag) {
         return '/'
     }
+    if (auth.systemFlag && (to.path === '/nueva' || to.path.includes('/classify'))) {
+        return '/'
+    }
 })
 
 export default router

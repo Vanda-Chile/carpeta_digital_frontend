@@ -2,12 +2,15 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFolderStore } from '../stores/folderStore'
+import { useAuthStore } from '../stores/authStore'
 import AppHeader from '../components/AppHeader.vue'
 import { api, type ApiFolder, type ApiObservation } from '../api'
 
 const route = useRoute()
 const router = useRouter()
 const store = useFolderStore()
+const auth = useAuthStore()
+const readOnly = computed(() => auth.systemFlag)
 
 const folderId = computed(() => decodeURIComponent(route.params.id as string))
 const docId = computed(() => decodeURIComponent(route.params.docId as string))
@@ -157,7 +160,7 @@ function formatSize(bytes: number): string {
 
       <!-- Accept / Reject action bar -->
       <div v-if="doc" class="flex items-center gap-3">
-        <template v-if="!isClosed">
+        <template v-if="!isClosed && !readOnly">
         <button
           :disabled="stateLoading || doc.state === 'accepted' || acceptBlockedByType"
           :title="acceptBlockedByType ? 'Ya existe un documento de este tipo en la carpeta.' : 'Aceptar'"

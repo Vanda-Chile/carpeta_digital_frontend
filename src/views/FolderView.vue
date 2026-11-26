@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFolderStore } from '../stores/folderStore'
+import { useAuthStore } from '../stores/authStore'
 import AppHeader from '../components/AppHeader.vue'
 import UploadModal from '../components/UploadModal.vue'
 import SignModal from '../components/SignModal.vue'
@@ -14,6 +15,8 @@ import { api, type ApiFolder, type ApiDocument, type ApiDocumentType } from '../
 const route = useRoute()
 const router = useRouter()
 const store = useFolderStore()
+const auth = useAuthStore()
+const readOnly = computed(() => auth.systemFlag)
 
 const folderId = computed(() => decodeURIComponent(route.params.id as string))
 const documents = computed(() => store.getDocuments(folderId.value))
@@ -244,6 +247,7 @@ function formatDateTime(iso: string): string {
     <div class="max-w-7xl mx-auto px-4 pt-4 flex items-center justify-end gap-2">
       <!-- Enviar a Aduana -->
       <button
+        v-if="!readOnly"
         :disabled="folder?.state !== 'closed'"
         :title="folder?.state !== 'closed' ? 'La carpeta debe estar firmada para poder enviarse a Aduana' : 'Enviar a Aduana'"
         class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700
@@ -257,6 +261,7 @@ function formatDateTime(iso: string): string {
       </button>
       <!-- Enviar por mail -->
       <button
+        v-if="!readOnly"
         class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700
                hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
         @click="showSendMail = true"
@@ -290,8 +295,20 @@ function formatDateTime(iso: string): string {
         Bitácora
       </button>
       <!-- Folder state toggle -->
+      <span
+        v-if="folder && readOnly"
+        :class="folder.state === 'open'
+          ? 'border-green-200 bg-green-50 text-green-700'
+          : 'border-gray-200 bg-white text-gray-600'"
+        class="rounded-lg border px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+      >
+        <span class="inline-block w-1.5 h-1.5 rounded-full"
+          :class="folder.state === 'open' ? 'bg-green-500' : 'bg-gray-400'"
+        />
+        {{ folder.state === 'open' ? 'Abierta' : 'Cerrada' }}
+      </span>
       <button
-        v-if="folder"
+        v-if="folder && !readOnly"
         :disabled="togglingState || (folderIsSigned && folder.state === 'closed')"
         :title="folderIsSigned && folder.state === 'closed' ? 'La carpeta está firmada y no se puede volver a abrir' : ''"
         :class="folder.state === 'open'
@@ -334,7 +351,7 @@ function formatDateTime(iso: string): string {
       </button>
       <!-- Sign button — hidden once folder is signed/closed -->
       <button
-        v-if="folder?.state !== 'closed'"
+        v-if="folder?.state !== 'closed' && !readOnly"
         :disabled="signing || !folder || checklistBlocksSign"
         :title="checklistBlocksSign ? 'Completá la checklist antes de firmar' : 'Firmar la carpeta'"
         class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700
@@ -347,7 +364,7 @@ function formatDateTime(iso: string): string {
         {{ signing ? 'Firmando…' : 'Firmar' }}
       </button>
       <button
-        v-if="!documentsLocked"
+        v-if="!documentsLocked && !readOnly"
         class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white
                hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
         @click="showUpload = true"
@@ -391,7 +408,7 @@ function formatDateTime(iso: string): string {
           <p class="text-sm font-medium text-gray-500">Aún no hay documentos</p>
           <p class="text-xs text-gray-400 mt-1">Suba un archivo para comenzar</p>
           <button
-            v-if="!documentsLocked"
+            v-if="!documentsLocked && !readOnly"
             class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white
                    hover:bg-indigo-700 transition"
             @click="showUpload = true"
@@ -452,14 +469,14 @@ function formatDateTime(iso: string): string {
                 <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ doc.signed_at ? formatDateTime(doc.signed_at) : '—' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap space-x-2">
                   <button
-                    v-if="!documentsLocked && doc.state !== 'deleted'"
+                    v-if="!documentsLocked && !readOnly && doc.state !== 'deleted'"
                     class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
                     @click="openClassify(doc)"
                   >
                     Clasificar
                   </button>
                   <button
-                    v-if="!documentsLocked && doc.state !== 'deleted'"
+                    v-if="!documentsLocked && !readOnly && doc.state !== 'deleted'"
                     class="text-xs font-medium text-red-500 hover:text-red-700 transition cursor-pointer"
                     @click="handleDelete(doc)"
                   >
@@ -482,7 +499,7 @@ function formatDateTime(iso: string): string {
             </span>
           </div>
 
-          <div v-if="folder && !documentsLocked" ref="dropdownRef" class="relative mb-3">
+          <div v-if="folder && !documentsLocked && !readOnly" ref="dropdownRef" class="relative mb-3">
             <input
               v-model="tipoQuery"
               type="text"
@@ -546,7 +563,7 @@ function formatDateTime(iso: string): string {
                 {{ item.nombre }}
               </span>
               <button
-                v-if="!documentsLocked"
+                v-if="!documentsLocked && !readOnly"
                 type="button"
                 class="shrink-0 text-xs text-gray-400 hover:text-red-500 disabled:opacity-40 transition"
                 :disabled="checklistSaving"
@@ -561,7 +578,7 @@ function formatDateTime(iso: string): string {
           <p v-if="checklistError" class="mt-3 text-xs text-red-600">{{ checklistError }}</p>
 
           <p
-            v-if="checklistBlocksSign && folder?.state !== 'closed'"
+            v-if="checklistBlocksSign && !readOnly && folder?.state !== 'closed'"
             class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800"
           >
             Faltan documentos de la lista de documentos requeridos. No se puede firmar la carpeta hasta completarlos.
