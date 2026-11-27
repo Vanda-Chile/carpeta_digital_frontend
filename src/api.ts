@@ -246,9 +246,18 @@ export const api = {
             }),
         delete: (id: number) =>
             request<void>(`/download-allowlist/${id}`, { method: 'DELETE' }),
+        createGroup: (payload: {
+            name: string
+            rules: { cidr: string; enabled: boolean }[]
+        }) =>
+            request<ApiAllowlistEntry[]>('/download-allowlist/group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }),
         saveGroup: (payload: {
             name: string
-            previous_name?: string | null
+            previous_name: string
             rules: { id?: number; cidr: string; enabled: boolean }[]
         }) =>
             request<ApiAllowlistEntry[]>('/download-allowlist/group', {
