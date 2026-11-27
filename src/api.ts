@@ -248,20 +248,11 @@ export const api = {
             request<void>(`/download-allowlist/${id}`, { method: 'DELETE' }),
         createGroup: (payload: {
             name: string
-            rules: { cidr: string; enabled: boolean }[]
-        }) =>
-            request<ApiAllowlistEntry[]>('/download-allowlist/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            }),
-        saveGroup: (payload: {
-            name: string
-            previous_name: string
+            previous_name?: string
             rules: { id?: number; cidr: string; enabled: boolean }[]
         }) =>
             request<ApiAllowlistEntry[]>('/download-allowlist/group', {
-                method: 'PUT',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             }),
@@ -351,6 +342,8 @@ export const api = {
             }),
         sign: (uuid: string) =>
             request<void>(`/folders/${uuid}/sign`, { method: 'POST' }),
+        reopen: (uuid: string) =>
+            request<ApiFolder>(`/folders/${uuid}/reopen`, { method: 'POST' }),
         downloadZip: async (uuid: string, filename: string) => {
             const blob = await requestBlob(`/folders/${uuid}/download`)
             const url = URL.createObjectURL(blob)

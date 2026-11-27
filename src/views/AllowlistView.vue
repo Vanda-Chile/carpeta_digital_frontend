@@ -129,18 +129,11 @@ async function handleSubmit() {
 
   saving.value = true
   try {
-    if (editingName.value === null) {
-      await api.downloadAllowlist.createGroup({
-        name,
-        rules: rules.map(({ cidr, enabled }) => ({ cidr, enabled })),
-      })
-    } else {
-      await api.downloadAllowlist.saveGroup({
-        name,
-        previous_name: editingName.value,
-        rules,
-      })
-    }
+    await api.downloadAllowlist.createGroup(
+      editingName.value === null
+        ? { name, rules: rules.map(({ cidr, enabled }) => ({ cidr, enabled })) }
+        : { name, previous_name: editingName.value, rules },
+    )
     closeModal()
     await fetchEntries()
   } catch (e: unknown) {

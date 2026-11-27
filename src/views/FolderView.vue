@@ -38,6 +38,7 @@ const signing = ref(false)
 const downloading = ref(false)
 const downloadingFirma = ref(false)
 const togglingState = ref(false)
+const reopening = ref(false)
 const folder = ref<ApiFolder | null>(null)
 const checklistRows = computed(() => {
   const items = folder.value?.checklist_types ?? []
@@ -178,6 +179,20 @@ async function handleDownloadFirma() {
     alert(e instanceof Error ? e.message : 'No se pudo descargar los archivos firmados.')
   } finally {
     downloadingFirma.value = false
+  }
+}
+
+async function handleReopen() {
+  if (!folder.value || reopening.value || !auth.isAdmin || readOnly.value || !folderIsSigned.value) return
+  if (!confirm('¿Reabrir la carpeta? Los documentos volverán a poder modificarse. Esta acción queda registrada en la bitácora.')) return
+  reopening.value = true
+  try {
+    folder.value = await api.folders.reopen(folderId.value)
+    store.fetchDocuments(folderId.value)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'No se pudo reabrir la carpeta.')
+  } finally {
+    reopening.value = false
   }
 }
 
@@ -322,6 +337,19 @@ function formatDateTime(iso: string): string {
           :class="folder.state === 'open' ? 'bg-green-500' : 'bg-gray-400'"
         />
         {{ folder.state === 'open' ? 'Abierta' : 'Cerrada' }}
+      </button>
+      <button
+        v-if="folderIsSigned && auth.isAdmin && !readOnly"
+        :disabled="reopening"
+        title="Reabrir la carpeta"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800
+               hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+        @click="handleReopen"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        {{ reopening ? 'Reabriendo…' : 'Reabrir' }}
       </button>
       <button
         :disabled="downloading || store.loading || !hasUploadedDocuments"

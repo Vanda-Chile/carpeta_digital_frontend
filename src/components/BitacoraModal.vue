@@ -17,6 +17,7 @@ const EVENT_LABELS: Record<string, (e: ApiBitacoraEntry) => string> = {
     `${e.user_name ?? 'Desconocido'} modificó documento${e.document_tipo ? ` "${e.document_tipo}"` : ''}.`,
   folder_closed: () => 'Carpeta cerrada.',
   folder_signed: (e) => `${e.user_name ?? 'Desconocido'} firmó la carpeta.`,
+  folder_reopened: (e) => `${e.user_name ?? 'Desconocido'} reabrió la carpeta.`,
   checklist_updated: (e) => `${e.user_name ?? 'Desconocido'} actualizó la checklist.`,
 }
 
